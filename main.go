@@ -72,7 +72,7 @@ func main() {
 			if data, err := ioutil.ReadFile(*config); err == nil {
 				c := &Config{}
 				if err = json.Unmarshal(data, &c); err == nil && len(c.Tags) > 0 {
-					tags := make([]string, len(c.Tags))
+					tags = make([]string, len(c.Tags))
 					for i, tag := range c.Tags {
 						tags[i] = tag.Name
 					}
@@ -126,6 +126,7 @@ func main() {
 			items = client.Read()
 			i := 0
 			for k, v := range items {
+				log.Println("Processing tag", k)
 				msg.Points[i].Time = v.Timestamp
 				msg.Points[i].Name = k
 				msg.Points[i].Value = v.Value
