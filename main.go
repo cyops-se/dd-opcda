@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/konimarti/opc"
@@ -40,6 +43,9 @@ func main() {
 	config := flag.String("c", "", "Configuration file, for example declaring tags to process. If not specified, all tags will be processed")
 	create := flag.Bool("create", false, "Use this parameter to create a config file with all tags found in the specified server")
 	list := flag.Bool("list", false, "Lists the OPC DA servers available on the specified source")
+	browse := flag.String("browse", "", "Lists all tags at the specified tag")
+	iterations := flag.Int("i", 1, "Number of times to get all specified tags (used to measure performance)")
+	interval := flag.Int("p", 1, "Read interval in seconds")
 	flag.Parse()
 
 	if *list {
@@ -62,9 +68,24 @@ func main() {
 		return
 	}
 
-	fmt.Println("Available tags")
-	opc.PrettyPrint(browser)
-	tags := opc.CollectTags(browser)
+	log.Println("Available tags")
+	tags := []string{""}
+	if *browse != "" {
+		subtree := opc.ExtractBranchByName(browser, *browse)
+		if subtree == nil {
+			log.Println("No tags available at specified branch:", *browse)
+			return
+		}
+
+		opc.PrettyPrint(subtree)
+		tags = opc.CollectTags(subtree)
+		if *config == "" || !*create {
+			return
+		}
+	} else {
+		opc.PrettyPrint(browser)
+		tags = opc.CollectTags(browser)
+	}
 
 	// Check config and use tags defined there if any
 	if *config != "" {
@@ -85,13 +106,14 @@ func main() {
 		} else {
 			c := &Config{}
 			c.Tags = make([]ConfigTagEntry, len(tags))
-			for i, tag := range tags {
-				c.Tags[i].Name = tag
+			for t, tag := range tags {
+				c.Tags[t].Name = tag
 			}
 			if data, err := json.MarshalIndent(c, "", "    "); err == nil {
 				if err = ioutil.WriteFile(*config, data, 0644); err != nil {
 					log.Printf("Unable to write JSON config file, %s. Error: %v\n", *config, err)
 				} else {
+					log.Println("New configuration file with all tags created:", *config)
 					return
 				}
 			} else {
@@ -112,35 +134,51 @@ func main() {
 	}
 
 	fmt.Println("Connected...")
-	timer := time.NewTicker(1 * time.Second)
+	timer := time.NewTicker(time.Duration(*interval) * time.Second)
 
 	// read all added tags
 	go func() {
-		items := client.Read()
+		items := client.Read() // This is only to get the number of items
 		msg := &DataMessage{}
-		msg.Count = len(items)
+		msg.Count = 10
 		msg.Points = make([]DataPoint, msg.Count)
 
 		for {
 			<-timer.C
-			items = client.Read()
-			i := 0
-			for k, v := range items {
-				log.Println("Processing tag", k)
-				msg.Points[i].Time = v.Timestamp
-				msg.Points[i].Name = k
-				msg.Points[i].Value = v.Value
-				msg.Points[i].Quality = int(v.Quality)
-				i++
+			start := float64(time.Now().UnixNano())
+			for j := 0; j < *iterations; j++ {
+				items = client.Read()
+			}
+			end := float64(time.Now().UnixNano())
+			if *iterations > 1 {
+				fmt.Printf("It took %f seconds to read %d tags\n", (end-start)/1000000000.0, len(items)**iterations)
 			}
 
-			data, _ := json.Marshal(msg)
-			con.Write(data)
-			// fmt.Printf("%d bytes written\n", n)
-			// fmt.Println(string(data))
+			var i, b int // golang always initialize to 0
+			for k, v := range items {
+				msg.Points[b].Time = v.Timestamp
+				msg.Points[b].Name = k
+				msg.Points[b].Value = v.Value
+				msg.Points[b].Quality = int(v.Quality)
+
+				// Send batch when msg.Points is full (keep it small to avoid fragmentation)
+				if b == len(msg.Points)-1 || i == len(items)-1 {
+					data, _ := json.Marshal(msg)
+					con.Write(data)
+					b = 0
+				} else {
+					b++
+				}
+				i++
+			}
 		}
 	}()
 
-	// Sleep forever
-	<-(chan int)(nil)
+	// Sleep until interrupted
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+
+	fmt.Println("Exiting ...")
+	client.Close()
 }
