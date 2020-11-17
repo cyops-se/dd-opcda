@@ -23,8 +23,9 @@ type DataPoint struct {
 }
 
 type DataMessage struct {
-	Count  int         `json:"count"`
-	Points []DataPoint `json:"points"`
+	Counter uint64      `json:"counter"`
+	Count   int         `json:"count"`
+	Points  []DataPoint `json:"points"`
 }
 
 type ConfigTagEntry struct {
@@ -148,28 +149,29 @@ func main() {
 			start := float64(time.Now().UnixNano())
 			for j := 0; j < *iterations; j++ {
 				items = client.Read()
+
+				var i, b int // golang always initialize to 0
+				for k, v := range items {
+					msg.Points[b].Time = v.Timestamp
+					msg.Points[b].Name = k
+					msg.Points[b].Value = v.Value
+					msg.Points[b].Quality = int(v.Quality)
+
+					// Send batch when msg.Points is full (keep it small to avoid fragmentation)
+					if b == len(msg.Points)-1 || i == len(items)-1 {
+						data, _ := json.Marshal(msg)
+						con.Write(data)
+						b = 0
+						msg.Counter++
+					} else {
+						b++
+					}
+					i++
+				}
 			}
 			end := float64(time.Now().UnixNano())
 			if *iterations > 1 {
 				fmt.Printf("It took %f seconds to read %d tags\n", (end-start)/1000000000.0, len(items)**iterations)
-			}
-
-			var i, b int // golang always initialize to 0
-			for k, v := range items {
-				msg.Points[b].Time = v.Timestamp
-				msg.Points[b].Name = k
-				msg.Points[b].Value = v.Value
-				msg.Points[b].Quality = int(v.Quality)
-
-				// Send batch when msg.Points is full (keep it small to avoid fragmentation)
-				if b == len(msg.Points)-1 || i == len(items)-1 {
-					data, _ := json.Marshal(msg)
-					con.Write(data)
-					b = 0
-				} else {
-					b++
-				}
-				i++
 			}
 		}
 	}()
