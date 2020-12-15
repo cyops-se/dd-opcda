@@ -49,6 +49,8 @@ func main() {
 	interval := flag.Int("p", 1, "Read interval in seconds")
 	flag.Parse()
 
+	defaultconfigname := "config.json"
+
 	if *list {
 		servers_found := opc.NewAutomationObject().GetOPCServers(*source)
 		log.Printf("Found %d server(s) on '%s':\n", len(servers_found), *source)
@@ -56,6 +58,10 @@ func main() {
 			log.Println(server)
 		}
 		return
+	}
+
+	if *create && *config == "" {
+		config = &defaultconfigname
 	}
 
 	con, err := net.Dial("udp", fmt.Sprintf("%s:%d", *target, *port))
