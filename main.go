@@ -50,42 +50,45 @@ func main() {
 	flag.Parse()
 
 	if *list {
-		servers_found := opc.NewAutomationObject().GetOPCServers(*source)
-		log.Printf("Found %d server(s) on '%s':\n", len(servers_found), *source)
-		for _, server := range servers_found {
-			log.Println(server)
+		if ao, err := opc.NewAutomationObject(); ao != nil && err == nil {
+			servers_found := ao.GetOPCServers(*source)
+			log.Printf("Found %d server(s) on '%s':\n", len(servers_found), *source)
+			for _, server := range servers_found {
+				log.Println(server)
+			}
+		} else {
+			log.Println("Unable to get new automation object, err:", err)
 		}
 		return
 	}
 
-	con, err := net.Dial("udp", fmt.Sprintf("%s:%d", *target, *port))
-	defer con.Close()
-
-	browser, err := opc.CreateBrowser(*progID, // ProgId
-		[]string{*source}, // Nodes
-	)
-	if err != nil {
-		fmt.Println("Failed to browse OPC server, error:", err)
-		return
-	}
-
-	log.Println("Available tags")
 	tags := []string{""}
-	if *browse != "" {
-		subtree := opc.ExtractBranchByName(browser, *browse)
-		if subtree == nil {
-			log.Println("No tags available at specified branch:", *browse)
+	if *config == "" || *create {
+		browser, err := opc.CreateBrowser(*progID, // ProgId
+			[]string{*source}, // Nodes
+		)
+		if err != nil {
+			fmt.Println("Failed to browse OPC server, error:", err)
 			return
 		}
 
-		opc.PrettyPrint(subtree)
-		tags = opc.CollectTags(subtree)
-		if *config == "" || !*create {
-			return
+		fmt.Println("Available tags")
+		if *browse != "" {
+			subtree := opc.ExtractBranchByName(browser, *browse)
+			if subtree == nil {
+				log.Println("No tags available at specified branch:", *browse)
+				return
+			}
+
+			opc.PrettyPrint(subtree)
+			tags = opc.CollectTags(subtree)
+			if *config == "" || !*create {
+				return
+			}
+		} else {
+			opc.PrettyPrint(browser)
+			tags = opc.CollectTags(browser)
 		}
-	} else {
-		opc.PrettyPrint(browser)
-		tags = opc.CollectTags(browser)
 	}
 
 	// Check config and use tags defined there if any
@@ -123,6 +126,11 @@ func main() {
 		}
 	}
 
+	if len(tags) <= 0 {
+		log.Println("No tags defined, aborting...")
+		return
+	}
+
 	client, err := opc.NewConnection(*progID, // ProgId
 		[]string{*source}, //  OPC servers nodes
 		tags,              // slice of OPC tags
@@ -133,6 +141,14 @@ func main() {
 		fmt.Println("Failed to connect to OPC server, error:", err)
 		return
 	}
+
+	con, err := net.Dial("udp", fmt.Sprintf("%s:%d", *target, *port))
+	if con == nil {
+		fmt.Println("Failed to connect target server:", err)
+		return
+	}
+	
+	defer con.Close()
 
 	fmt.Println("Connected...")
 	timer := time.NewTicker(time.Duration(*interval) * time.Second)
