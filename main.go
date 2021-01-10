@@ -49,6 +49,7 @@ type Context struct {
 	iterations int
 	interval   int
 	cmd        string
+	trace bool
 }
 
 var ctx Context
@@ -66,6 +67,7 @@ func main() {
 	flag.IntVar(&ctx.iterations, "i", 1, "Number of times to get all specified tags (used to measure performance)")
 	flag.IntVar(&ctx.interval, "p", 1, "Read interval in seconds")
 	flag.StringVar(&ctx.cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
+	flag.BoolVar(&ctx.trace, "trace", false, "Prints traces of OCP data to the console")
 	flag.Parse()
 
 	isIntSess, err := svc.IsAnInteractiveSession()
@@ -79,7 +81,7 @@ func main() {
 
 	switch ctx.cmd {
 	case "debug":
-		runService(svcName, true)
+		runEngine()
 		return
 	case "install":
 		err = installService(svcName, svcName)
@@ -102,6 +104,8 @@ func main() {
 }
 
 func runEngine() {
+	log.Println("Running OPC engine")
+
 	if ctx.list {
 		if ao := opc.NewAutomationObject(); ao != nil {
 			servers_found := ao.GetOPCServers(ctx.source)
@@ -119,29 +123,32 @@ func runEngine() {
 		ctx.config = "config.json"
 	}
 
-	browser, err := opc.CreateBrowser(ctx.progID, // ProgId
-		[]string{ctx.source}, // Nodes
-	)
-
-	if err != nil {
-		fmt.Println("Failed to browse OPC server, error:", err)
-		return
-	}
-
+	
 	tags := []string{""}
-	fmt.Println("Available tags")
-	if ctx.branch != "" {
-		subtree := opc.ExtractBranchByName(browser, ctx.branch)
-		if subtree == nil {
-			log.Println("No tags available at specified branch:", ctx.branch)
+	if ctx.config == "" {
+		browser, err := opc.CreateBrowser(ctx.progID, // ProgId
+			[]string{ctx.source}, // Nodes
+		)
+
+		if err != nil {
+			log.Println("Failed to browse OPC server, error:", err)
 			return
 		}
 
-		opc.PrettyPrint(subtree)
-		tags = opc.CollectTags(subtree)
-	} else {
-		opc.PrettyPrint(browser)
-		tags = opc.CollectTags(browser)
+		log.Println("Available tags")
+		if ctx.branch != "" {
+			subtree := opc.ExtractBranchByName(browser, ctx.branch)
+			if subtree == nil {
+				log.Println("No tags available at specified branch:", ctx.branch)
+				return
+			}
+
+			opc.PrettyPrint(subtree)
+			tags = opc.CollectTags(subtree)
+		} else {
+			opc.PrettyPrint(browser)
+			tags = opc.CollectTags(browser)
+		}
 	}
 
 	if ctx.create {
@@ -192,19 +199,19 @@ func runEngine() {
 	defer client.Close()
 
 	if err != nil {
-		fmt.Println("Failed to connect to OPC server, error:", err)
+		log.Println("Failed to connect to OPC server, error:", err)
 		return
 	}
 
 	con, err := net.Dial("udp", fmt.Sprintf("%s:%d", ctx.target, ctx.port))
 	if con == nil {
-		fmt.Println("Failed to connect target server:", err)
+		log.Println("Failed to connect target server:", err)
 		return
 	}
 
 	defer con.Close()
 
-	fmt.Println("Connected...")
+	log.Println("Connected...")
 	timer := time.NewTicker(time.Duration(ctx.interval) * time.Second)
 
 	// read all added tags
@@ -219,6 +226,10 @@ func runEngine() {
 			start := float64(time.Now().UnixNano())
 			for j := 0; j < ctx.iterations; j++ {
 				items = client.Read()
+
+				if ctx.trace {
+					log.Println("items:", items)
+				}
 
 				var i, b int // golang always initialize to 0
 				for k, v := range items {
@@ -241,7 +252,7 @@ func runEngine() {
 			}
 			end := float64(time.Now().UnixNano())
 			if ctx.iterations > 1 {
-				fmt.Printf("It took %f seconds to read %d tags\n", (end-start)/1000000000.0, len(items)*ctx.iterations)
+				log.Printf("It took %f seconds to read %d tags\n", (end-start)/1000000000.0, len(items)*ctx.iterations)
 			}
 		}
 	}()
@@ -251,6 +262,6 @@ func runEngine() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
-	fmt.Println("Exiting ...")
+	log.Println("Exiting ...")
 	client.Close()
 }
