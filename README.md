@@ -1,5 +1,19 @@
+![example usage](./assets/cyops.png)
 # dd-opcda - Simple OPC DA data one way replicator
 **cyops-se**: *This application is part of the cyops.se community and use the same language and terminology. If there are acronyms or descriptions here that are unknown or ambiguous, please visit the [documentations](https://github.com/cyops-se/docs) site to see if it is explained there. You are welcome to help us improve the content regardless if you find what you are looking for or not*.
+
+# Table of Contents
+* [Introduction](#Introduction)
+* [Overview](#Overview)
+  * [Forward Error Correction](#forward-error-correction)
+  *  [Packet loss](#packet-loss)
+* [CLI Examples](#cli-examples)
+  * [List local OPC servers](#list-local-opc-servers)
+  * [List tags on specified OPC server](#list-tags-on-specified-opc-server)
+  * [Create a configuration file](#create-a-configuration-file)
+  * [Sample and send using the configuration file](#sample-and-send-using-the-configuration-file)
+  * [Performance test](#performance-test)
+* [Example data-diode configuration on Windows](./EXAMPLE.md)
 
 ## Introduction
 This very basic program collects all tags from an OPC DA source once a second and sends them in JSON format over UDP to a single-cast receiver IP.
@@ -8,8 +22,11 @@ The primary use of this program is for replicating real time data from sensitive
 
 On the outer side of the data diode, use [dd-inserter](https://github.com/cyops-se/dd-inserter) to store the data in a Timescale database. More one way data receivers will be added in the future.
 
+**IMPORTANT NOTE!**  
+```dd-opcda``` is dependent on OPC core components (usually provided by the local OPC server) and the Grabox OPC wrapper. Please refer to the [CLI Examples](#cli-examples) section for more information! Without these pre-requisites, the application will fail!
+
 ## Overview
-Today it is almost impossible to keep an IACS isolated over time as the businesses operating them find the information in them valuable and even critical to run the business efficiently. Fortunately, there are ways to meet that need without compromising the security architecture. One simple way is to use a data diode.
+Today it is almost impossible to keep an IACS isolated over time as the businesses operating them find the information in them valuable and even critical to run the business efficiently. Fortunately, there are ways to meet that need without compromising the security architecture. One simple way is to use a data diode as illustrated below.
 
 ![example usage](./assets/diode-1.png)
 
@@ -24,20 +41,59 @@ It is also possible to:
 - List OPC servers
 - Browse specific branches of an OPC server
 - Create a configuration file with tags from a specific branch
-- Define a number of iterations to read the specified tags (for performance testing) in each interval
+- Define a number of iterations to read the specified tags (for performance testing) in each 
+- Install it as a Windows service
 
 ***dd-opcda is currently only able to connect to local OPC servers***
 
 Tag values are collected together with current time and quality and are sent in batches of 10 to avoid risking packet fragmentation.
 
-## Forward Error Correction (FEC)
-There is currently no support for forward error correction, but it is a reasonable request for future versions of this program. 
+### Forward Error Correction
+There is currently no support for forward error correction, but it is a reasonable request for future versions of this program for those that have links prone to bit errors.
 
-## Packet loss
+### Packet loss
 One of the real challenges with data diodes is handling lost packets as there is no way to automatically detect and feedback to the sender for retransmission.
 
-## Examples
+# CLI Examples
 These examples use the IntegrationObjects OPC server simulator available for free at: https://integrationobjects.com/sioth-opc/sioth-opc-servers/opc-server-simulators/.
+
+**Pre-requisites**: The OPC core components (provided by the local OPC server) must be installed and the Graybox OPC Wrapper must be registered for ```dd-opcda``` to work properly.
+
+Register the Graybox OPC Wrapper by copying gbda_aut.dll (probably x86 version, but you need to figure that out yourself) to c:\windows\system32 and register it with the following command as administrator:
+
+```
+c:\windows\system32\regsvr32 gbda_aut.dll
+```
+
+Command line arguments can be listed by running: ```dd-opcda -h```
+```
+.\dd-opcda.exe -h
+Usage of .\dd-opcda.exe:
+  -branch string
+        Lists all tags at the specified branch tag
+  -c string
+        Configuration file, for example declaring tags to process. If not specified, all tags will be processed
+  -cmd string
+        Windows service command (try 'usage' for more info) (default "debug")
+  -create
+        Use this parameter to create a config file with all tags found in the specified server
+  -i int
+        Number of times to get all specified tags (used to measure performance) (default 1)
+  -list
+        Lists the OPC DA servers available on the specified source
+  -p int
+        Read interval in seconds (default 1)
+  -port int
+        The UDP port of the outer inserter (default 4357)
+  -progid string
+        The OPC server prog id (default "IntegrationObjects.AdvancedSimulator.1")
+  -source string
+        The address of the OPC server (default "localhost")
+  -target string
+        The address of the outer inserter (default "172.26.8.243")
+  -trace
+        Prints traces of OCP data to the console
+```
 
 ### List local OPC servers
 ```bash
@@ -47,7 +103,7 @@ These examples use the IntegrationObjects OPC server simulator available for fre
 ```
 ### List tags on specified OPC server
 ```bash
-> dd-opcda -progid IntegrationObjects.AdvancedSimulator.1 -browse root
+> dd-opcda -progid IntegrationObjects.AdvancedSimulator.1 -branch root
 2020/11/16 11:07:35 Available tags
 root
    + Random
@@ -78,7 +134,7 @@ root
 
 ### Create a configuration file
 ```bash
-> dd-opcda.exe -progid IntegrationObjects.AdvancedSimulator.1 -browse Random -create -c config.json
+> dd-opcda.exe -progid IntegrationObjects.AdvancedSimulator.1 -branch Random -create -c config.json
 2020/11/16 11:28:08 Available tags
 Random
    - Random/Text
