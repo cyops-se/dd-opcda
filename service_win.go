@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	runtimedebug "runtime/debug"
@@ -15,7 +14,6 @@ import (
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
-	// "golang.org/x/sys/windows/svc/eventlog"
 )
 
 type myservice struct{}
@@ -43,11 +41,6 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
 	go runEngine()
-	if ctx.list || ctx.create {
-		log.Println("Waiting 10 secs before returning")
-		time.Sleep(10 * time.Second)
-		return
-	}
 
 	log.Println("entering loop")
 
@@ -66,7 +59,7 @@ loop:
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
 				changes <- svc.Status{State: svc.StopPending}
-				log.Println( "Shutting down service")
+				log.Println("Shutting down service")
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -81,16 +74,6 @@ loop:
 	}
 	log.Println("Exiting service")
 	return
-}
-
-func usage(errmsg string) {
-	fmt.Fprintf(os.Stderr,
-		"%s\n\n"+
-			"usage: %s <command>\n"+
-			"       where <command> is one of\n"+
-			"       install, remove, debug, start, stop, pause or continue.\n",
-		errmsg, os.Args[0])
-	os.Exit(2)
 }
 
 func runService(name string, isDebug bool) {

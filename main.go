@@ -1,6 +1,8 @@
 package main
 
 import (
+	"dd-opcda/db"
+	"dd-opcda/engine"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/konimarti/opc"
+	"github.com/cyops-se/opc"
 	"golang.org/x/sys/windows/svc"
 )
 
@@ -49,7 +51,7 @@ type Context struct {
 	iterations int
 	interval   int
 	cmd        string
-	trace bool
+	trace      bool
 }
 
 var ctx Context
@@ -70,6 +72,11 @@ func main() {
 	flag.BoolVar(&ctx.trace, "trace", false, "Prints traces of OCP data to the console")
 	flag.Parse()
 
+	db.ConnectDatabase()
+	engine.InitGroups()
+	engine.InitServers()
+	go RunWeb()
+
 	isIntSess, err := svc.IsAnInteractiveSession()
 	if err != nil {
 		log.Fatalf("failed to determine if we are running in an interactive session: %v", err)
@@ -79,32 +86,26 @@ func main() {
 		return
 	}
 
-	switch ctx.cmd {
-	case "debug":
-		runEngine()
-		return
-	case "install":
-		err = installService(svcName, svcName)
-	case "remove":
-		err = removeService(svcName)
-	case "start":
-		err = startService(svcName)
-	case "stop":
-		err = controlService(svcName, svc.Stop, svc.StopPending)
-	case "pause":
-		err = controlService(svcName, svc.Pause, svc.Paused)
-	case "continue":
-		err = controlService(svcName, svc.Continue, svc.Running)
-	default:
-		usage(fmt.Sprintf("invalid command %s", ctx.cmd))
-	}
-	if err != nil {
-		log.Fatalf("failed to %s %s: %v", ctx.cmd, svcName, err)
-	}
+	// runEngine()
+
+	// Sleep until interrupted
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+
+	log.Println("Exiting (waiting 1 sec) ...")
+	time.Sleep(time.Second * 1)
 }
 
 func runEngine() {
 	log.Println("Running OPC engine")
+
+	// b, err := opc.CreateBrowserCursor(ctx.progID, // ProgId
+	// 	[]string{ctx.source}, // Nodes
+	// )
+
+	// log.Println("b:", b)
+	// return
 
 	if ctx.list {
 		if ao := opc.NewAutomationObject(); ao != nil {
@@ -123,7 +124,6 @@ func runEngine() {
 		ctx.config = "config.json"
 	}
 
-	
 	tags := []string{""}
 	if ctx.config == "" {
 		browser, err := opc.CreateBrowser(ctx.progID, // ProgId
@@ -256,12 +256,4 @@ func runEngine() {
 			}
 		}
 	}()
-
-	// Sleep until interrupted
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-
-	log.Println("Exiting ...")
-	client.Close()
 }
