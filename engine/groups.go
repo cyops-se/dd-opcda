@@ -15,7 +15,7 @@ import (
 func metaSender(diodeProxy *types.DiodeProxy) {
 	address := fmt.Sprintf("%s:%d", diodeProxy.EndpointIP, diodeProxy.MetaPort)
 
-	db.Log("trace", "Settings up outgoing META", address)
+	db.Log("trace", "Setting up outgoing META", address)
 
 	con, err := net.Dial("udp", address)
 	if con == nil {
@@ -23,7 +23,7 @@ func metaSender(diodeProxy *types.DiodeProxy) {
 		return
 	}
 
-	timer := time.NewTicker(10 * time.Second)
+	timer := time.NewTicker(10 * time.Minute)
 	for {
 		tags, _ := GetTagInfos()
 		batchsize := 100
@@ -32,10 +32,10 @@ func metaSender(diodeProxy *types.DiodeProxy) {
 				batchsize = len(tags) - i
 			}
 			msg, _ := json.Marshal(tags[i : i+batchsize])
-			if n, err := con.Write(msg); err != nil {
+			if _, err := con.Write(msg); err != nil {
 				log.Println("Failed to send meta data:", err.Error())
 			} else {
-				log.Println("Sending meta data ... ", len(tags), n)
+				// log.Println("Sending meta data ... ", len(tags), n)
 			}
 		}
 
@@ -65,7 +65,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 
 	target := fmt.Sprintf("%s:%d", group.DiodeProxy.EndpointIP, group.DiodeProxy.DataPort)
 
-	db.Log("trace", "Settings up outgoing DATA", target)
+	db.Log("trace", "Setting up outgoing DATA", target)
 
 	con, err := net.Dial("udp", target)
 	if con == nil {
@@ -103,9 +103,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			// Send batch when msg.Points is full (keep it small to avoid fragmentation)
 			if b == len(msg.Points)-1 {
 				data, _ := json.Marshal(msg)
-				for i := 0; i < 100; i++ {
-					con.Write(data)
-				}
+				con.Write(data)
 				b = 0
 				msg.Sequence++
 				// log.Printf("Sent data over UDP to '%s', sequence: %d\n", target, msg.Sequence-1)
@@ -151,12 +149,12 @@ func GetGroups() ([]*types.OPCGroup, error) {
 }
 
 func GetGroup(id uint) (*types.OPCGroup, error) {
-	var item *types.OPCGroup
-	if err := db.DB.Table("opc_groups").Take(&item, id).Error; err != nil {
+	var item types.OPCGroup
+	if err := db.DB.Table("opc_groups").Preload("DiodeProxy").Take(&item, id).Error; err != nil {
 		return nil, err
 	}
 
-	return item, nil
+	return &item, nil
 }
 
 func GetGroupTags(id uint) ([]*types.OPCTag, error) {

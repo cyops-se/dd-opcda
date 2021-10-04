@@ -7,31 +7,28 @@
 package main
 
 import (
-	"log"
-	"os"
-	runtimedebug "runtime/debug"
+	"fmt"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
+
+var elog debug.Log
 
 type myservice struct{}
 
-// Windows services can't print to console, so we have to explicitly handle any panics.
-func HandleAnyError() {
+func handlePanic() {
 	if r := recover(); r != nil {
-		log.Printf("Panic: %v\n%s\n", r, string(runtimedebug.Stack()))
+		elog.Error(1, fmt.Sprintf("recover: %#v", r))
+		return
 	}
 }
 
 func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	defer HandleAnyError()
-	if ctx.cmd == "debug" {
-		log.Println("Logs are now redirected to '/cyops/logs/dd-opcda.*'")
-		os.Stdout, _ = os.OpenFile("/cyops/logs/dd-opcda.out.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755)
-		os.Stderr, _ = os.OpenFile("/cyops/logs/dd-opcda.err.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755)
-	}
+	defer handlePanic()
 
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 	changes <- svc.Status{State: svc.StartPending}
@@ -40,9 +37,10 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
+	elog.Info(1, "starting engine")
 	go runEngine()
 
-	log.Println("entering loop")
+	elog.Info(1, "entering service control loop")
 
 loop:
 	for {
@@ -58,8 +56,10 @@ loop:
 				time.Sleep(100 * time.Millisecond)
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.StopPending}
-				log.Println("Shutting down service")
+				// golang.org/x/sys/windows/svc.TestExample is verifying this output.
+				testOutput := strings.Join(args, "-")
+				testOutput += fmt.Sprintf("-%d", c.Context)
+				elog.Info(1, testOutput)
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -68,25 +68,35 @@ loop:
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 				tick = fasttick
 			default:
-				log.Printf("unexpected control request #%d\n", c)
+				elog.Error(1, fmt.Sprintf("unexpected control request #%d", c))
 			}
 		}
 	}
-	log.Println("Exiting service")
+	changes <- svc.Status{State: svc.StopPending}
 	return
 }
 
 func runService(name string, isDebug bool) {
 	var err error
-	log.Printf("starting %s service\n", name)
+	if isDebug {
+		elog = debug.New(name)
+	} else {
+		elog, err = eventlog.Open(name)
+		if err != nil {
+			return
+		}
+	}
+	defer elog.Close()
+
+	elog.Info(1, fmt.Sprintf("starting %s service", name))
 	run := svc.Run
 	if isDebug {
 		run = debug.Run
 	}
 	err = run(name, &myservice{})
 	if err != nil {
-		log.Printf("%s service failed: %v\n", name, err)
+		elog.Error(1, fmt.Sprintf("%s service failed: %v", name, err))
 		return
 	}
-	log.Printf("%s service stopped\n", name)
+	elog.Info(1, fmt.Sprintf("%s service stopped", name))
 }

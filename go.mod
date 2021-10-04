@@ -3,7 +3,7 @@ module dd-opcda
 go 1.16
 
 require (
-	github.com/cyops-se/opc v0.3.2
+	github.com/cyops-se/opc v0.3.3
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/go-ole/go-ole v1.2.4
 	github.com/gofiber/fiber/v2 v2.18.0
@@ -13,5 +13,3 @@ require (
 	gorm.io/driver/sqlite v1.1.4
 	gorm.io/gorm v1.21.10
 )
-
-replace github.com/cyops-se/opc => g:\src\opc

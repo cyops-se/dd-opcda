@@ -20,7 +20,7 @@
     <template v-slot:item.actions="{ item }">
       <router-link
         style="text-decoration: none; color: inherit;"
-        :to="{name: 'Tag Browser', params: {serverid: item.ID}}"
+        :to="{name: 'TagBrowser', params: {serverid: item.ID}}"
       >
         <v-icon
           class="mr-2"

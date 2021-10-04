@@ -23,6 +23,7 @@ var admin string
 var static embed.FS
 
 func RunWeb() {
+	defer handlePanic()
 
 	// http.FS can be used to create a http Filesystem
 	subFS2, _ := fs.Sub(static, "static")

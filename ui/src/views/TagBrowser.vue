@@ -59,6 +59,7 @@
 <script>
   import ApiService from '@/services/api.service'
   export default {
+    name: 'TagBrowserView',
     data: () => ({
       position: '',
       breadcrumbs: [],

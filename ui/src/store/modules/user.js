@@ -50,7 +50,7 @@ const actions = {
     localStorage.setItem('vuetify@user', JSON.stringify(state))
     ApiService.put('data/settings', state.settings)
     .then((data) => { })
-    .catch((e) => { console.log('user settings update failed') })
+    .catch((e) => { console.log('user setting update failed') })
   },
 }
 
