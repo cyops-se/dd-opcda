@@ -83,22 +83,6 @@
                       :value="editedItem ? editedItem.runatstart : true"
                     />
                   </v-col>
-                  <v-col cols="8">
-                    <v-text-field
-                      v-model.number="editedItem.targetip"
-                      label="Target IP (data diode)"
-                      outlined
-                      hide-details
-                    />
-                  </v-col>
-                  <v-col cols="4">
-                    <v-text-field
-                      v-model.number="editedItem.targetport"
-                      label="Target Port"
-                      outlined
-                      hide-details
-                    />
-                  </v-col>
                   <v-col cols="12">
                     <v-textarea
                       v-model="editedItem.description"

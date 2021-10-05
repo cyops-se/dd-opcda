@@ -55,7 +55,7 @@
                   </v-col>
                   <v-col cols="12">
                     <v-text-field
-                      v-model.number="editedItem.ip"
+                      v-model="editedItem.ip"
                       label="Endpoint IP (receiver on other side of diode)"
                       outlined
                       hide-details
