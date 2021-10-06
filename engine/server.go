@@ -22,7 +22,6 @@ var mutex sync.Mutex
 func handlePanic() {
 	if r := recover(); r != nil {
 		log.Println(r)
-		mutex.Unlock()
 		return
 	}
 }

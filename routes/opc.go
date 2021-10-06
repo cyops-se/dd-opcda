@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/cyops-se/opc"
@@ -108,9 +109,15 @@ func GetServerBranches(c *fiber.Ctx) (err error) {
 	defer handlePanic(c)
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
-	branch := c.Params("branch")
+	encodedbranch := c.Params("branch")
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
+		handleError(c, err)
+	}
+	
+	branch, err := url.QueryUnescape(encodedbranch)
+	if err != nil {
+		log.Println("Failed to decode branch", encodedbranch)
 		handleError(c, err)
 	}
 
@@ -127,10 +134,16 @@ func GetServerLeaves(c *fiber.Ctx) error {
 	defer handlePanic(c)
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
-	branch := c.Params("branch")
+	encodedbranch := c.Params("branch")
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
 		return handleError(c, err)
+	}
+	
+	branch, err := url.QueryUnescape(encodedbranch)
+	if err != nil {
+		log.Println("Failed to decode branch", encodedbranch)
+		handleError(c, err)
 	}
 
 	engine.Lock()
@@ -146,9 +159,15 @@ func GetServerListBranches(c *fiber.Ctx) (err error) {
 	defer handlePanic(c)
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
-	branch := c.Params("branch")
+	encodedbranch := c.Params("branch")
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
+		handleError(c, err)
+	}
+	
+	branch, err := url.QueryUnescape(encodedbranch)
+	if err != nil {
+		log.Println("Failed to decode branch", encodedbranch)
 		handleError(c, err)
 	}
 

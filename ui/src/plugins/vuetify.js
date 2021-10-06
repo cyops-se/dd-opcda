@@ -1,10 +1,16 @@
 // Vuetify Documentation https://vuetifyjs.com
 
+import '@mdi/font/css/materialdesignicons.css'
 import Vue from 'vue'
 import Vuetify from 'vuetify/lib/framework'
 import ripple from 'vuetify/lib/directives/ripple'
 
-Vue.use(Vuetify, { directives: { ripple } })
+Vue.use(Vuetify, {
+  directives: { ripple },
+  icons: {
+    iconfont: 'mdi', // default - only for display purposes
+  },
+})
 
 const theme = {
   primary: '#E91E63',

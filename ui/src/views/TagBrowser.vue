@@ -154,7 +154,8 @@
             })
         } else {
           // add
-          ApiService.post('opc/tag/names', [item.path])
+          var tag = item.path.replaceAll('/', '.')
+          ApiService.post('opc/tag/names', [tag])
             .then(({ data }) => {
               console.log('new tags response: ' + JSON.stringify(data))
             }).then(data => {
@@ -168,7 +169,8 @@
       },
 
       async loadBranch (item) {
-        var branch = item.path.replace('/', '.')
+        console.log("branch item: " + JSON.stringify(item))
+        var branch = item.path.replaceAll('/', '.')
         console.log('loading', branch)
         let uri = 'opc/server/' + this.$route.params.serverid + '/list/' + branch
         if (branch === 'root') uri = 'opc/server/' + this.$route.params.serverid + '/root'
@@ -176,14 +178,16 @@
           .then(response => {
             if (response.data.branches) {
               for (var i = 0; i < response.data.branches.length; i++) {
-                item.children.push({ name: response.data.branches[i], children: [] })
+                var itemname = response.data.branches[i]
+                var path = item.path + '/' + itemname
+                item.children.push({ name: itemname, children: [], path: path })
               }
             }
 
             if (response.data.leaves) {
               for (i = 0; i < response.data.leaves.length; i++) {
                 var itemname = response.data.leaves[i]
-                var path = item.name + '/' + itemname
+                var path = item.path + '/' + itemname
                 var icon = 'tagoutline'
 
                 for (var tn = 0; tn < this.tags.length; tn++) {

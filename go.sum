@@ -12,8 +12,8 @@ github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc
 github.com/coreos/go-etcd v2.0.0+incompatible/go.mod h1:Jez6KQU2B/sWsbdaef3ED8NzMklzPG4d5KIOhIy30Tk=
 github.com/coreos/go-semver v0.2.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
-github.com/cyops-se/opc v0.3.3 h1:+vZGeptW+t7z746UrCBIjnkuVEA2wX4Jd8XnKOPTS+0=
-github.com/cyops-se/opc v0.3.3/go.mod h1:saz+ZhPCyP72IpbMp7P1/I8Qw5WC4HzW60yPoTQJZn0=
+github.com/cyops-se/opc v0.3.4 h1:Owpmq7tZsGPDVTzI08bIX+d63YdvbkLYwX5E/H1oGhY=
+github.com/cyops-se/opc v0.3.4/go.mod h1:saz+ZhPCyP72IpbMp7P1/I8Qw5WC4HzW60yPoTQJZn0=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fasthttp/websocket v1.4.3-rc.8 h1:6P/+ejKdkLC9UhkY7GlShGWYMDBiWQtIECLBTDZ/2LU=
