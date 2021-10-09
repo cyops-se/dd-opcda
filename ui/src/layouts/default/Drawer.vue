@@ -91,7 +91,6 @@
 <script>
   // Utilities
   import { get, sync } from 'vuex-pathify'
-  import WebsocketService from '@/services/websocket.service'
 
   export default {
     name: 'DefaultDrawer',

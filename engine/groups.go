@@ -100,6 +100,8 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			msg.Points[b].Value = v.Value
 			msg.Points[b].Quality = int(v.Quality)
 
+			fmt.Println("name:", k, "timestamp:", v.Timestamp, time.Now().UTC())
+
 			// Send batch when msg.Points is full (keep it small to avoid fragmentation)
 			if b == len(msg.Points)-1 {
 				data, _ := json.Marshal(msg)
@@ -151,6 +153,15 @@ func GetGroups() ([]*types.OPCGroup, error) {
 func GetGroup(id uint) (*types.OPCGroup, error) {
 	var item types.OPCGroup
 	if err := db.DB.Table("opc_groups").Preload("DiodeProxy").Take(&item, id).Error; err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func GetDefaultGroup() (*types.OPCGroup, error) {
+	var item types.OPCGroup
+	if err := db.DB.Table("opc_groups").Preload("DiodeProxy").First(&item, "default_group = true").Error; err != nil {
 		return nil, err
 	}
 
@@ -214,6 +225,10 @@ func GetTagNames() ([]string, error) {
 func GetTagInfos() (items []*types.TagsInfos, err error) {
 	if err = db.DB.Table("opc_tags").Where("deleted_at is null").Find(&items).Error; err != nil {
 		return nil, err
+	}
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("Could not find any tags")
 	}
 
 	var name = items[len(items)-1].Name

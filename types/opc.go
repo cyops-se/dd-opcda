@@ -24,6 +24,7 @@ type OPCGroup struct {
 	ProgID       string     `json:"progid"`
 	DiodeProxyID uint       `json:"diodeproxyid"`
 	DiodeProxy   DiodeProxy `json:"diodeproxy"`
+	DefaultGroup bool       `json:"defaultgroup"`
 }
 
 type OPCTag struct {

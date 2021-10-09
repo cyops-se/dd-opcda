@@ -24,6 +24,8 @@ func RegisterOPCRoutes(api fiber.Router) {
 	api.Get("/opc/server/:serverid/list/:branch", GetServerListBranches)
 
 	api.Get("/opc/group", GetGroups)
+	api.Post("/opc/group", NewGroup)
+	api.Put("/opc/group", UpdateGroup)
 	api.Get("/opc/group/:gid", GetGroup)
 	api.Get("/opc/group/:gid/tags", GetGroupTags)
 	api.Get("/opc/group/start/:gid", GetGroupStart)
@@ -39,7 +41,7 @@ func RegisterOPCRoutes(api fiber.Router) {
 func handlePanic(c *fiber.Ctx) {
 	if r := recover(); r != nil {
 		log.Println(r)
-		engine.Unlock()
+		// engine.Unlock()
 		c.Status(500)
 		c.JSON(r)
 		return
@@ -58,7 +60,7 @@ func GetServerById(c *fiber.Ctx) error {
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	server, err := engine.GetServer(sid)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	return c.Status(200).JSON(server)
@@ -68,7 +70,7 @@ func GetServerRoot(c *fiber.Ctx) error {
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	engine.Lock()
@@ -92,7 +94,7 @@ func GetServerPosition(c *fiber.Ctx) error {
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	engine.Lock()
@@ -112,13 +114,13 @@ func GetServerBranches(c *fiber.Ctx) (err error) {
 	encodedbranch := c.Params("branch")
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
-	
+
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
 		log.Println("Failed to decode branch", encodedbranch)
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	engine.Lock()
@@ -139,11 +141,11 @@ func GetServerLeaves(c *fiber.Ctx) error {
 	if err != nil {
 		return handleError(c, err)
 	}
-	
+
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
 		log.Println("Failed to decode branch", encodedbranch)
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	engine.Lock()
@@ -162,13 +164,13 @@ func GetServerListBranches(c *fiber.Ctx) (err error) {
 	encodedbranch := c.Params("branch")
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
-	
+
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
 		log.Println("Failed to decode branch", encodedbranch)
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	engine.Lock()
@@ -190,7 +192,79 @@ func GetServerListBranches(c *fiber.Ctx) (err error) {
 
 func GetGroups(c *fiber.Ctx) (err error) {
 	groups, _ := engine.GetGroups()
+
+	// make sure at least one group is the default group
+	found := false
+	for _, group := range groups {
+		if group.DefaultGroup {
+			found = true
+			break
+		}
+	}
+
+	if !found && len(groups) > 0 {
+		groups[0].DefaultGroup = true
+		db.DB.Save(&groups[0])
+	}
+
 	return c.Status(http.StatusOK).JSON(groups)
+}
+
+func NewGroup(c *fiber.Ctx) (err error) {
+	var group types.OPCGroup
+	if err := c.BodyParser(&group); err != nil {
+		db.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
+		return c.Status(503).SendString(err.Error())
+	}
+
+	if group.DefaultGroup {
+		if err := db.DB.Exec("update opc_groups set 'default_group' = false").Error; err != nil {
+			db.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
+		}
+	}
+
+	if err := db.DB.Save(&group).Error; err != nil {
+		db.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
+		return c.Status(503).SendString(err.Error())
+	}
+
+	// return c.Status(http.StatusOK).JSON(group)
+	return GetGroups(c)
+}
+
+func UpdateGroup(c *fiber.Ctx) (err error) {
+	var data types.OPCGroup
+	if err := c.BodyParser(&data); err != nil {
+		db.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
+		return c.Status(503).SendString(err.Error())
+	}
+
+	var group types.OPCGroup
+	if err := db.DB.First(&group, "ID = ?", data.ID).Error; err != nil {
+		db.Log("error", "UpdateGroup failed (first)", fmt.Sprintf("%v", err))
+		return c.Status(503).SendString(err.Error())
+	}
+
+	if data.DefaultGroup {
+		if err := db.DB.Exec("update opc_groups set 'default_group' = false").Error; err != nil {
+			db.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
+		}
+	}
+
+	group.Name = data.Name
+	group.Description = data.Description
+	group.DefaultGroup = data.DefaultGroup
+	group.DiodeProxyID = data.DiodeProxy.ID
+	group.Interval = data.Interval
+	group.RunAtStart = data.RunAtStart
+
+	if err := db.DB.Save(&group).Error; err != nil {
+		db.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
+		return c.Status(503).SendString(err.Error())
+	}
+
+	// return c.Status(http.StatusOK).JSON(group)
+	return GetGroups(c)
 }
 
 func GetGroup(c *fiber.Ctx) (err error) {
@@ -199,7 +273,7 @@ func GetGroup(c *fiber.Ctx) (err error) {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	return c.Status(200).JSON(group)
@@ -211,7 +285,7 @@ func GetGroupTags(c *fiber.Ctx) (err error) {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	tags, err := engine.GetGroupTags(uint(gid))
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	return c.Status(200).JSON(tags)
@@ -223,7 +297,7 @@ func GetGroupStart(c *fiber.Ctx) (err error) {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	if err = engine.Start(group); err != nil {
@@ -239,7 +313,7 @@ func GetGroupStop(c *fiber.Ctx) (err error) {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	if err = engine.Stop(group); err != nil {
@@ -252,9 +326,8 @@ func GetGroupStop(c *fiber.Ctx) (err error) {
 func PostGroupAddTag(c *fiber.Ctx) (err error) {
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
-	log.Println("Got group id", gid, "group", group)
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	var items []string
@@ -265,7 +338,6 @@ func PostGroupAddTag(c *fiber.Ctx) (err error) {
 			if err == nil {
 				tag.GroupID = group.ID
 				db.DB.Save(tag)
-				log.Println("Adding tag:", tag)
 			}
 		}
 
@@ -284,7 +356,7 @@ func GetTagNames(c *fiber.Ctx) (err error) {
 
 	tags, err := engine.GetTagNames()
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
 	}
 
 	return c.Status(200).JSON(tags)
@@ -295,7 +367,12 @@ func PostTagNames(c *fiber.Ctx) (err error) {
 
 	tagnames, err := engine.GetTagNames()
 	if err != nil {
-		handleError(c, err)
+		return handleError(c, err)
+	}
+
+	defaultgroup, err := engine.GetDefaultGroup()
+	if err != nil {
+		return handleError(c, err)
 	}
 
 	var items []string
@@ -314,7 +391,7 @@ func PostTagNames(c *fiber.Ctx) (err error) {
 			}
 
 			if !found {
-				tag := &types.OPCTag{Name: tagname}
+				tag := &types.OPCTag{Name: tagname, GroupID: defaultgroup.ID}
 				if err = db.DB.Create(&tag).Error; err == nil {
 					savedcount++
 				} else {

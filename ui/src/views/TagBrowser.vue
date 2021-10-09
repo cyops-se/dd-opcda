@@ -72,6 +72,7 @@
       tags: [],
       tree: [],
       search: '',
+      delimiter: '.',
     }),
 
     computed: {
@@ -87,11 +88,22 @@
     },
 
     mounted () {
+      this.loadSettings()
       this.refresh()
       this.rootSelected()
     },
 
     methods: {
+      loadSettings () {
+        ApiService.get('data/key_value_pairs/field/key/tagpathdelimiter')
+          .then(response => {
+            if (response.data) this.delimiter = response.data[0].value
+            console.log('delimiter: ', this.delimiter)
+          }).catch(response => {
+            console.log('Failed to get delimiter: ' + response.message)
+          })
+      },
+
       refresh () {
         ApiService.get('opc/tag/names')
           .then(response => {
@@ -154,7 +166,7 @@
             })
         } else {
           // add
-          var tag = item.path.replaceAll('/', '.')
+          var tag = item.path.replaceAll('/', this.delimiter)
           ApiService.post('opc/tag/names', [tag])
             .then(({ data }) => {
               console.log('new tags response: ' + JSON.stringify(data))
@@ -169,7 +181,7 @@
       },
 
       async loadBranch (item) {
-        console.log("branch item: " + JSON.stringify(item))
+        console.log('branch item: ' + JSON.stringify(item))
         var branch = item.path.replaceAll('/', '.')
         console.log('loading', branch)
         let uri = 'opc/server/' + this.$route.params.serverid + '/list/' + branch
@@ -186,8 +198,8 @@
 
             if (response.data.leaves) {
               for (i = 0; i < response.data.leaves.length; i++) {
-                var itemname = response.data.leaves[i]
-                var path = item.path + '/' + itemname
+                itemname = response.data.leaves[i]
+                path = item.path + '/' + itemname
                 var icon = 'tagoutline'
 
                 for (var tn = 0; tn < this.tags.length; tn++) {

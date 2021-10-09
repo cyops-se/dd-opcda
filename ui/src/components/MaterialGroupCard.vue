@@ -29,7 +29,7 @@
                 <span class="text-h4 text-no-wrap">
                   {{ copy.status == 1 ? 'RUNNING' : 'STOPPED' }}
                 </span>
-                <div>Count: {{ copy.counter }}</div>
+                <div>Send count: {{ copy.counter }}</div>
               </div>
             </v-col>
             <v-col cols="2">
@@ -95,7 +95,6 @@
 
     data: () => ({
       copy: {},
-      timer: null,
     }),
 
     watch: {
@@ -106,13 +105,8 @@
 
     created () {
       this.copy = Object.assign({}, this.group)
-      if (this.copy.status === 1 && !this.timer) {
-        // this.timer = setInterval(this.refresh, this.copy.interval * 1000)
-      }
       var t = this
       WebsocketService.topic('data.group', function (topic, group) {
-        // console.log('topic: ' + topic + ', group: ' + JSON.stringify(group))
-        // console.log('group: ' + group.name + ', counter: ' + group.counter)
         if (t.copy.ID === group.ID) t.copy = group
       })
     },
@@ -126,14 +120,8 @@
             this.$notification.success('Collection of group tags ' + (this.copy.status === 1 ? 'stopped' : 'started'))
             this.copy.status = this.copy.status === 1 ? 0 : 1
             if (this.copy.status === 1) {
-              if (!this.timer) {
-                clearInterval(this.timer)
-                // this.timer = setInterval(this.refresh, this.copy.interval * 1000)
-              }
             } else {
               console.log('clearing timer for: ' + this.group.name)
-              clearInterval(this.timer)
-              this.timer = null
             }
           }).catch(response => {
             console.log('ERROR response: ' + response.message)

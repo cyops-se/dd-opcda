@@ -84,6 +84,15 @@
                     />
                   </v-col>
                   <v-col cols="12">
+                    <v-checkbox
+                      v-model="editedItem.defaultgroup"
+                      label="Default group"
+                      hide-details
+                      class="mt-n3"
+                      :value="editedItem ? editedItem.defaultgroup : true"
+                    />
+                  </v-col>
+                  <v-col cols="12">
                     <v-textarea
                       v-model="editedItem.description"
                       label="Description"
@@ -128,6 +137,9 @@
         mdi-delete
       </v-icon>
     </template>
+    <template v-slot:item.defaultgroup="{ item }">
+      <div>{{ item.defaultgroup ? "Yes": "" }}</div>
+    </template>
   </v-data-table>
 </template>
 
@@ -155,6 +167,7 @@
         { text: 'OPC DA Server', value: 'progid', width: '10%' },
         { text: 'Diode proxy', value: 'diodeproxy.name', width: '10%' },
         { text: 'Sampling Interval (seconds)', value: 'interval', width: '10%' },
+        { text: 'Default', value: 'defaultgroup', width: '5%' },
         { text: 'Actions', value: 'actions', width: 1, sortable: false },
       ],
       items: [],
@@ -229,19 +242,21 @@
 
       save () {
         if (this.editedIndex > -1) {
-          Object.assign(this.items[this.editedIndex], this.editedItem)
-          ApiService.put('data/opc_groups', this.editedItem)
+          // Object.assign(this.items[this.editedIndex], this.editedItem)
+          ApiService.put('opc/group', this.editedItem)
             .then(response => {
               this.$notification.success('Group updated!')
+              this.items = response.data
             }).catch(function (response) {
               console.log('Failed to update group! ' + response)
               this.$notification.error('Failed to update group!' + response)
             })
         } else {
-          ApiService.post('data/opc_groups', this.editedItem)
+          ApiService.post('opc/group', this.editedItem)
             .then(response => {
               this.$notification.success('Group created!')
-              this.items.push(response.data)
+              // this.items.push(response.data)
+              this.items = response.data
             }).catch(function (response) {
               console.log('Failed to create group! ' + response.message)
               this.$notification.error('Failed to create group!' + response)
