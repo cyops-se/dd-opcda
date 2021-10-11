@@ -231,11 +231,11 @@ func GetTagInfos() (items []*types.TagsInfos, err error) {
 		return nil, fmt.Errorf("Could not find any tags")
 	}
 
-	var name = items[len(items)-1].Name
-	for i := 1000; i < 10000; i++ {
-		newitem := &types.TagsInfos{ID: uint(i), Name: fmt.Sprintf("%s/%d", name, i)}
-		items = append(items, newitem)
-	}
+	// var name = items[len(items)-1].Name
+	// for i := 1000; i < 10000; i++ {
+	// 	newitem := &types.TagsInfos{ID: uint(i), Name: fmt.Sprintf("%s/%d", name, i)}
+	// 	items = append(items, newitem)
+	// }
 
 	return items, nil
 }
