@@ -69,6 +69,7 @@ func RunWeb() {
 	routes.RegisterUserRoutes(api)
 	routes.RegisterDataRoutes(api)
 	routes.RegisterOPCRoutes(api)
+	routes.RegisterSystemRoutes(api)
 
 	app.Listen(":3000")
 

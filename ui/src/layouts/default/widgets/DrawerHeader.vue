@@ -16,7 +16,7 @@
         <strong class="mr-1 font-weight-black">DD</strong>
         <span class="accent--text">-OPCDA</span>
       </v-list-item-title>
-      <span style="font-size: .7rem">version {{ version }}</span>
+      <span style="font-size: .7rem">version {{ sysinfo.gitversion }} ({{ sysinfo.gitcommit }})</span>
       <span
         style="font-size: .7rem"
         class="mr-1 font-weight-black"
@@ -28,9 +28,23 @@
 <script>
   // Utilities
   import { get } from 'vuex-pathify'
+  import ApiService from '@/services/api.service'
 
   export default {
     name: 'DefaultDrawerHeader',
+    data: () => ({
+      sysinfo: {},
+    }),
+
     computed: { version: get('app/version') },
+
+    created () {
+      ApiService.get('system/info')
+        .then(response => {
+          this.sysinfo = response.data
+        }).catch(response => {
+          console.log('ERROR response: ' + JSON.stringify(response))
+        })
+    },
   }
 </script>

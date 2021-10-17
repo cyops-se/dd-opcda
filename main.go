@@ -3,11 +3,10 @@ package main
 import (
 	"dd-opcda/db"
 	"dd-opcda/engine"
+	"dd-opcda/routes"
 	"flag"
+	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
@@ -35,39 +34,31 @@ type Config struct {
 }
 
 type Context struct {
-	target     string
-	port       int
-	source     string
-	progID     string
-	config     string
-	create     bool
-	list       bool
-	branch     string
-	iterations int
-	interval   int
-	cmd        string
-	trace      bool
+	cmd     string
+	trace   bool
+	version bool
 }
 
 var ctx Context
+var GitVersion string
+var GitCommit string
 
 func main() {
 	defer handlePanic()
 
 	svcName := "dd-opcda"
-	flag.StringVar(&ctx.target, "target", "172.26.8.243", "The address of the outer inserter")
-	flag.IntVar(&ctx.port, "port", 4357, "The UDP port of the outer inserter")
-	flag.StringVar(&ctx.source, "source", "localhost", "The address of the OPC server")
-	flag.StringVar(&ctx.progID, "progid", "IntegrationObjects.AdvancedSimulator.1", "The OPC server prog id")
-	flag.StringVar(&ctx.config, "c", "", "Configuration file, for example declaring tags to process. If not specified, all tags will be processed")
-	flag.BoolVar(&ctx.create, "create", false, "Use this parameter to create a config file with all tags found in the specified server")
-	flag.BoolVar(&ctx.list, "list", false, "Lists the OPC DA servers available on the specified source")
-	flag.StringVar(&ctx.branch, "branch", "", "Lists all tags at the specified branch tag")
-	flag.IntVar(&ctx.iterations, "i", 1, "Number of times to get all specified tags (used to measure performance)")
-	flag.IntVar(&ctx.interval, "p", 1, "Read interval in seconds")
 	flag.StringVar(&ctx.cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
 	flag.BoolVar(&ctx.trace, "trace", false, "Prints traces of OCP data to the console")
+	flag.BoolVar(&ctx.version, "v", false, "Prints the commit hash and exists")
 	flag.Parse()
+
+	routes.SysInfo.GitVersion = GitVersion
+	routes.SysInfo.GitCommit = GitCommit
+
+	if ctx.version {
+		fmt.Printf("dd-opcda version %s, commit: %s\n", routes.SysInfo.GitVersion, routes.SysInfo.GitCommit)
+		return
+	}
 
 	if ctx.cmd == "install" {
 		if err := installService(svcName, "dd-opcda from cyops-se"); err != nil {
@@ -94,12 +85,9 @@ func main() {
 	runService(svcName, true)
 
 	// Sleep until interrupted
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-
-	log.Println("Exiting (waiting 1 sec) ...")
-	time.Sleep(time.Second * 1)
+	// c := make(chan os.Signal)
+	// signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	// <-c
 }
 
 func runEngine() {

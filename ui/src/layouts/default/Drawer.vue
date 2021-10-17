@@ -143,12 +143,12 @@
         },
         {
           icon: 'mdi-folder-open',
-          text: 'Diode Proxies',
+          text: 'Diode Endpoints',
           to: '/pages/diodeproxies',
         },
         {
           icon: 'mdi-folder-multiple',
-          text: 'Data Groups',
+          text: 'Sampling Groups',
           to: '/pages/groups',
         },
         {

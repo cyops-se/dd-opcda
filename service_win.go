@@ -8,6 +8,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -27,6 +29,22 @@ func handlePanic() {
 	}
 }
 
+func reportError(f string, args ...interface{}) {
+	msg := fmt.Sprintf(f, args)
+	log.Println(msg)
+	if elog != nil {
+		elog.Error(1, msg)
+	}
+}
+
+func reportInfo(f string, args ...interface{}) {
+	msg := fmt.Sprintf(f, args)
+	log.Println(msg)
+	if elog != nil {
+		elog.Info(1, msg)
+	}
+}
+
 func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	defer handlePanic()
 
@@ -37,10 +55,25 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	elog.Info(1, "starting engine")
+	os.MkdirAll("/cyops/logs", 0755)
+	if !ctx.trace {
+		reportInfo("Logs are now redirected to '/cyops/logs/dd-opcda.*'")
+		if stdout, err := os.OpenFile("/cyops/logs/dd-opcda.out.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '/cyops/logs/dd-opcda.out.log', error; %s", err.Error())
+		} else {
+			os.Stdout = stdout
+		}
+		if stderr, err := os.OpenFile("/cyops/logs/dd-opcda.err.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '/cyops/logs/dd-opcda.err.log', error; %s", err.Error())
+		} else {
+			os.Stderr = stderr
+		}
+	}
+
+	reportInfo("starting engine")
 	go runEngine()
 
-	elog.Info(1, "entering service control loop")
+	reportInfo("entering service control loop")
 
 loop:
 	for {
@@ -59,7 +92,7 @@ loop:
 				// golang.org/x/sys/windows/svc.TestExample is verifying this output.
 				testOutput := strings.Join(args, "-")
 				testOutput += fmt.Sprintf("-%d", c.Context)
-				elog.Info(1, testOutput)
+				reportInfo(testOutput)
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -68,7 +101,7 @@ loop:
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 				tick = fasttick
 			default:
-				elog.Error(1, fmt.Sprintf("unexpected control request #%d", c))
+				reportError("unexpected control request #%d", c)
 			}
 		}
 	}
@@ -88,15 +121,15 @@ func runService(name string, isDebug bool) {
 	}
 	defer elog.Close()
 
-	elog.Info(1, fmt.Sprintf("starting %s service", name))
+	reportInfo("starting %s service", name)
 	run := svc.Run
 	if isDebug {
 		run = debug.Run
 	}
 	err = run(name, &myservice{})
 	if err != nil {
-		elog.Error(1, fmt.Sprintf("%s service failed: %v", name, err))
+		reportError("%s service failed: %v", name, err)
 		return
 	}
-	elog.Info(1, fmt.Sprintf("%s service stopped", name))
+	reportInfo("%s service stopped", name)
 }
