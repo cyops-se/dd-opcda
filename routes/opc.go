@@ -36,6 +36,8 @@ func RegisterOPCRoutes(api fiber.Router) {
 	api.Get("/opc/tag/names", GetTagNames)
 	api.Post("/opc/tag/names", PostTagNames)
 	api.Delete("/opc/tag/names", DeleteTagNames)
+
+	api.Post("/opc/tag/changes", PostTagChanges)
 }
 
 func handlePanic(c *fiber.Ctx) {
@@ -415,4 +417,48 @@ func DeleteTagNames(c *fiber.Ctx) (err error) {
 	}
 
 	return c.Status(200).JSON(&fiber.Map{"deleteitems": items})
+}
+
+func PostTagChanges(c *fiber.Ctx) (err error) {
+	defer handlePanic(c)
+
+	tagnames, err := engine.GetTagNames()
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	defaultgroup, err := engine.GetDefaultGroup()
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	var items []types.OPCTag
+	newcount := 0
+	failedcount := 0
+	updatedcount := 0
+	if err = c.BodyParser(&items); err == nil {
+		for _, item := range items {
+			found := false
+			for _, name := range tagnames {
+				if item.Name == name {
+					if err = db.DB.Save(&item).Error; err == nil {
+						found = true
+						updatedcount++
+						break
+					}
+				}
+			}
+
+			if !found {
+				item.GroupID = defaultgroup.ID
+				if err = db.DB.Create(&item).Error; err == nil {
+					newcount++
+				} else {
+					failedcount++
+				}
+			}
+		}
+	}
+
+	return c.Status(200).JSON(&fiber.Map{"new": newcount, "updated": updatedcount, "failed": failedcount, "total": len(items)})
 }

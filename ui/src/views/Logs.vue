@@ -5,7 +5,7 @@
     tag="section"
   >
     <v-card>
-      <v-card-title class="text-h5">
+      <v-card-title class="text-h4">
         System logs
         <v-spacer />
         <v-text-field
