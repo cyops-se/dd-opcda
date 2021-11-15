@@ -13,8 +13,6 @@
 
       <v-divider class="mx-3 mb-2" />
 
-      <!--default-list :items="items" /-->
-
       <v-list
         nav
         dense
@@ -102,10 +100,6 @@
         /* webpackChunkName: "default-drawer-header" */
         './widgets/DrawerHeader'
       ),
-      // DefaultList: () => import(
-      //   /* webpackChunkName: "default-list" */
-      //   './List'
-      // ),
     },
 
     props: {
@@ -157,6 +151,11 @@
           to: '/pages/tags',
         },
         {
+          icon: 'mdi-cached',
+          text: 'Resend',
+          to: '/pages/cache',
+        },
+        {
           icon: 'mdi-view-list',
           to: '/tables/logs',
           text: 'Logs',
@@ -177,10 +176,6 @@
     computed: {
       ...get('user', [
         'settings',
-      ]),
-      ...get('app', [
-        'items',
-        'version',
       ]),
       ...sync('app', [
         'drawer',

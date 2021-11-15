@@ -55,23 +55,14 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 		[]string{"localhost"}, //  OPC servers nodes
 		tagnames,              // slice of OPC tags
 	)
-	defer client.Close()
 
 	if err != nil {
-		db.Log("error", "Failed to create new connection", fmt.Sprintf("Group name: %s (id: %d), progid: %s, err: %s, %s",
+		db.Log("error", "Failed to create new connection to OPC DA server", fmt.Sprintf("Group name: %s (id: %d), progid: %s, err: %s, %s",
 			group.Name, group.ID, group.ProgID, err.Error(), tagnames))
 		return
 	}
 
-	target := fmt.Sprintf("%s:%d", group.DiodeProxy.EndpointIP, group.DiodeProxy.DataPort)
-
-	db.Log("trace", "Setting up outgoing DATA", target)
-
-	con, err := net.Dial("udp", target)
-	if con == nil {
-		db.Log("error", "Failed to open emitter", fmt.Sprintf("UDP emitter to IP: %s could not be opened, error: %s", target, err.Error()))
-		return
-	}
+	defer client.Close()
 
 	db.Log("trace", "Collecting tags", fmt.Sprintf("%d tags from group: %s (id: %d)", len(tags), group.Name, group.ID))
 
@@ -100,16 +91,15 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			msg.Points[b].Value = v.Value
 			msg.Points[b].Quality = int(v.Quality)
 
-			fmt.Println("name:", k, "timestamp:", v.Timestamp, time.Now().UTC())
-
 			// Send batch when msg.Points is full (keep it small to avoid fragmentation)
 			if b == len(msg.Points)-1 {
 				data, _ := json.Marshal(msg)
-				con.Write(data)
+				proxy := proxies[group.DiodeProxyID]
+				proxy.DataChan <- data
 				b = 0
 				msg.Sequence++
-				// log.Printf("Sent data over UDP to '%s', sequence: %d\n", target, msg.Sequence-1)
-				NotifySubscribers("info.data", fmt.Sprintf("Sent data over UDP to '%s', sequence: %d\n", target, msg.Sequence-1))
+				NotifySubscribers("info.data", fmt.Sprintf("Sent data over UDP to '%s', sequence: %d\n", proxy.DataCon.RemoteAddr().String(), msg.Sequence-1))
+				cacheMessage(msg)
 			} else {
 				b++
 			}
@@ -140,7 +130,8 @@ func InitGroups() {
 	var proxies []*types.DiodeProxy
 	db.DB.Table("diode_proxies").Order("id").Find(&proxies)
 	for _, proxy := range proxies {
-		go metaSender(proxy)
+		initProxy(proxy)
+		// go metaSender(proxy)
 	}
 }
 
@@ -230,12 +221,6 @@ func GetTagInfos() (items []*types.TagsInfos, err error) {
 	if len(items) == 0 {
 		return nil, fmt.Errorf("Could not find any tags")
 	}
-
-	// var name = items[len(items)-1].Name
-	// for i := 1000; i < 10000; i++ {
-	// 	newitem := &types.TagsInfos{ID: uint(i), Name: fmt.Sprintf("%s/%d", name, i)}
-	// 	items = append(items, newitem)
-	// }
 
 	return items, nil
 }

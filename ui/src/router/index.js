@@ -29,6 +29,7 @@ const router = new Router({
       route('GroupTable', null, 'pages/groups'),
       route('DiodeProxyTable', null, 'pages/diodeproxies'),
       route('TagTable', null, 'pages/tags'),
+      route('Cache', null, 'pages/cache'),
       route('SystemSettings', null, 'pages/systemsettings'),
 
       // Tables

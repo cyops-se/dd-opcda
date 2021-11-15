@@ -105,6 +105,7 @@ func DeleteDataByID(c *fiber.Ctx) error {
 	item := types.CreateType(table)
 
 	if err := db.DB.Delete(item, id).Error; err != nil {
+		fmt.Printf("DELETE FAIL: %#v (%d)\n", item, id)
 		db.Log("error", "Failed to delete item", err.Error())
 		return c.Status(503).SendString(err.Error())
 	}

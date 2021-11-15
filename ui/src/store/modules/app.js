@@ -7,6 +7,7 @@ const state = {
   drawer: null,
   drawerImage: false,
   mini: false,
+  sysinfo: {},
 }
 
 const mutations = make.mutations(state)

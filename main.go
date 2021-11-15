@@ -83,11 +83,7 @@ func main() {
 
 	// runEngine()
 	runService(svcName, true)
-
-	// Sleep until interrupted
-	// c := make(chan os.Signal)
-	// signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	// <-c
+	engine.CloseCache()
 }
 
 func runEngine() {
@@ -96,5 +92,6 @@ func runEngine() {
 	db.ConnectDatabase()
 	engine.InitGroups()
 	engine.InitServers()
+	engine.InitCache()
 	go RunWeb()
 }
