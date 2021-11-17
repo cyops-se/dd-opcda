@@ -8,7 +8,7 @@
       <v-toolbar
         flat
       >
-        <v-toolbar-title>Diode proxies</v-toolbar-title>
+        <v-toolbar-title>Diode endpoints</v-toolbar-title>
         <v-divider
           class="mx-4"
           inset
@@ -130,7 +130,7 @@
   import ApiService from '@/services/api.service'
 
   export default {
-    name: 'DiodeProxiesTableView',
+    name: 'DiodeEndpoints',
 
     data: () => ({
       dialog: false,

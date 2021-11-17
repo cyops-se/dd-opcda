@@ -17,3 +17,5 @@
 /test.db
 /static
 cache
+/outgoing
+/cache

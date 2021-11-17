@@ -6,11 +6,13 @@ import (
 	"dd-opcda/types"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -69,8 +71,17 @@ func GetCacheInfo() CacheInfo {
 }
 
 func ResendCacheItems(items []CacheItem) int {
+	if cacheInfo.Size <= 0 {
+		// Refresh the cache info
+		GetCacheInfo()
+	}
+
 	count := 0
-	proxy := proxies[2]
+	if proxy == nil {
+		log.Printf("No proxy defined")
+		return 0
+	}
+
 	for _, item := range items {
 		for _, fi := range cacheInfo.Items {
 			if fi.Filename == item.Filename {
@@ -83,29 +94,92 @@ func ResendCacheItems(items []CacheItem) int {
 	return count
 }
 
-func resendCacheItem(item CacheItem, proxy *types.DiodeProxy) int {
-	file, _ = os.OpenFile(item.Filename, os.O_RDONLY, 0644)
-	gzr, _ := gzip.NewReader(file)
-	fr := bufio.NewReader(gzr)
+func SendFullCache() error {
+	// Just copy the files to the outgoing file transfer directory
+	return copy("cache", "outgoing/new")
+}
 
-	count := 0
-	data, _ := ioutil.ReadAll(fr)
-	var msgs []types.DataMessage
-	if err := json.Unmarshal(data, &msgs); err == nil {
-		for _, msg := range msgs {
-			data, _ := json.Marshal(msg)
-			proxy.DataChan <- data
-			count++
-			time.Sleep(time.Millisecond)
+func copy(source, destination string) error {
+	var err error = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+		var relPath string = strings.Replace(path, source, "", 1)
+		if relPath == "" {
+			return nil
 		}
-	} else {
-		log.Println("Failed to unmarshal to JSON, error:", err.Error())
+		if info.IsDir() {
+			return os.MkdirAll(filepath.Join(destination, relPath), 0755)
+		} else {
+			var data, err1 = ioutil.ReadFile(filepath.Join(source, relPath))
+			if err1 != nil {
+				return err1
+			}
+			return ioutil.WriteFile(filepath.Join(destination, relPath), data, 0777)
+		}
+	})
+	if err != nil {
+		log.Println("copy command failed: ", err.Error())
 	}
+	return err
+}
 
-	gzr.Close()
-	file.Close()
+func copyFile(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
 
-	return count
+	dir := path.Dir(strings.ReplaceAll(dst, "\\", "/"))
+	log.Printf("Creating directory %s", dir)
+	os.MkdirAll(dir, 0755)
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
+}
+
+func resendCacheItem(item CacheItem, proxy *types.DiodeProxy) int {
+	// First put it on the file transfer directory
+	newFilename := path.Join("outgoing", "new", item.Filename)
+	if err := copyFile(item.Filename, newFilename); err != nil {
+		log.Printf("Failed to copy file %s to %s, error: %s", item.Filename, newFilename, err.Error())
+	}
+	/*
+		// Secondly, read it and send each message again
+		file, _ = os.OpenFile(item.Filename, os.O_RDONLY, 0644)
+		gzr, _ := gzip.NewReader(file)
+		fr := bufio.NewReader(gzr)
+
+		count := 0
+		data, _ := ioutil.ReadAll(fr)
+		var msgs []types.DataMessage
+		if err := json.Unmarshal(data, &msgs); err == nil {
+			for _, msg := range msgs {
+				data, _ := json.Marshal(msg)
+				proxy.DataChan <- data
+				count++
+				time.Sleep(time.Millisecond)
+			}
+		} else {
+			log.Println("Failed to unmarshal to JSON, error:", err.Error())
+		}
+
+		gzr.Close()
+		file.Close()
+
+		return count
+	*/
+	return 1
 }
 
 func getTimeFromFilename(filename string) time.Time {
@@ -156,16 +230,6 @@ func processMessages() {
 			} else {
 				fw.Write([]byte(","))
 			}
-
-			// // TEST of compression capabilities for approx 500 points/s
-			// for i := 0; i < 50; i++ {
-			// 	for i, _ := range msg.Points {
-			// 		msg.Points[i].Name = fmt.Sprintf("%d_ThisIsALongExtraTextThatIsReally_%d", time.Now().UnixNano(), time.Now().UnixNano())
-			// 	}
-
-			// 	data, _ := json.Marshal(msg)
-			// 	fw.Write(data)
-			// }
 
 			data, _ := json.Marshal(msg)
 			fw.Write(data)

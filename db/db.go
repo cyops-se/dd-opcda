@@ -30,6 +30,7 @@ func ConnectDatabase() {
 	ConfigureTypes(database, types.User{}, types.Settings{})
 	ConfigureTypes(database, types.DiodeProxy{})
 	ConfigureTypes(database, types.OPCGroup{}, types.OPCTag{})
+	ConfigureTypes(database, types.FileTransferConfig{})
 
 	DB = database
 }

@@ -93,5 +93,6 @@ func runEngine() {
 	engine.InitGroups()
 	engine.InitServers()
 	engine.InitCache()
+	engine.InitFileTransfer()
 	go RunWeb()
 }

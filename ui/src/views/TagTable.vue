@@ -3,6 +3,7 @@
     <file-drop
       :dialog.sync="uploadDialog"
       :multiple="false"
+      text="Drop your CSV meta files here!"
       @filesUploaded="processUpload($event)"
     />
     <v-data-table

@@ -16,6 +16,7 @@ var SysInfo SystemInformation
 
 func RegisterSystemRoutes(api fiber.Router) {
 	api.Get("/system/info", GetSysInfo)
+	api.Get("/system/sendhistory", SendFullCache)
 	api.Post("/system/resend", ResendCacheItems)
 }
 
@@ -32,4 +33,12 @@ func ResendCacheItems(c *fiber.Ctx) error {
 
 	count := engine.ResendCacheItems(items)
 	return c.Status(fiber.StatusOK).JSON(&fiber.Map{"count": count})
+}
+
+func SendFullCache(c *fiber.Ctx) error {
+	if err := engine.SendFullCache(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{"status": "ok"})
 }

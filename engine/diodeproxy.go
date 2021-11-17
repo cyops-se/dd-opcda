@@ -64,3 +64,10 @@ func sendJob(channel chan []byte, connection net.Conn) {
 		}
 	}
 }
+
+func FirstProxy() *types.DiodeProxy {
+	for _, p := range proxies {
+		return p
+	}
+	return nil
+}

@@ -16,3 +16,9 @@ func Log(category string, title string, msg string) string {
 	log.Printf(text)
 	return text
 }
+
+func Error(title string, format string, args ...interface{}) error {
+	msg := fmt.Sprintf(format, args...)
+	text := Log("error", title, msg)
+	return fmt.Errorf(text)
+}

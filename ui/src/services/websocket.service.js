@@ -22,7 +22,7 @@ const WebsocketService = {
   },
 
   onclose: function () {
-    console.log('Websocket  closed')
+    console.log('Websocket  closed: ')
   },
 
   onmessage: function (event) {

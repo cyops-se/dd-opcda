@@ -29,7 +29,8 @@ func RunWeb() {
 	subFS2, _ := fs.Sub(static, "static")
 	var staticFS = http.FS(subFS2)
 
-	app := fiber.New(fiber.Config{StrictRouting: true})
+	// Set a file transfer limit to 50MB
+	app := fiber.New(fiber.Config{StrictRouting: true, BodyLimit: 50 * 1024 * 1024})
 	app.Use(logger.New())
 
 	app.Use("/", filesystem.New(filesystem.Config{
@@ -70,6 +71,7 @@ func RunWeb() {
 	routes.RegisterDataRoutes(api)
 	routes.RegisterOPCRoutes(api)
 	routes.RegisterSystemRoutes(api)
+	routes.RegisterFileTransferRoutes(api)
 
 	app.Listen(":3000")
 

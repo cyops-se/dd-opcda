@@ -151,9 +151,14 @@
           to: '/pages/tags',
         },
         {
-          icon: 'mdi-cached',
-          text: 'Resend',
+          icon: 'mdi-history',
+          text: 'Tag History',
           to: '/pages/cache',
+        },
+        {
+          icon: 'mdi-transfer',
+          text: 'File Transfer',
+          to: '/pages/filetransfer',
         },
         {
           icon: 'mdi-view-list',

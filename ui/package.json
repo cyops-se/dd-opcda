@@ -1,5 +1,5 @@
 {
-  "name": "@vuetify-themes/material-dashboard-free",
+  "name": "@cyops-se/dd-opcda-ui",
   "version": "1.2.0",
   "private": true,
   "scripts": {

@@ -27,10 +27,11 @@ const router = new Router({
       route('ServerTable', null, 'pages/servers'),
       route('TagBrowser', null, 'pages/browse/:serverid'),
       route('GroupTable', null, 'pages/groups'),
-      route('DiodeProxyTable', null, 'pages/diodeproxies'),
-      route('TagTable', null, 'pages/tags'),
-      route('Cache', null, 'pages/cache'),
-      route('SystemSettings', null, 'pages/systemsettings'),
+      route('Diode Endpoints', null, 'pages/diodeproxies'),
+      route('Tag Table', null, 'pages/tags'),
+      route('History', null, 'pages/cache'),
+      route('System Settings', null, 'pages/systemsettings'),
+      route('File Transfer', null, 'pages/filetransfer'),
 
       // Tables
       route('Logs', null, 'tables/logs'),

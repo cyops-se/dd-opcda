@@ -29,7 +29,7 @@
             mdi-cloud-upload
           </v-icon>
           <p>
-            Drop the CSV meta file here.
+            {{ text }}
           </p>
         </v-row>
         <v-virtual-scroll
@@ -100,6 +100,7 @@
         type: Boolean,
         default: false,
       },
+      text: String,
     },
 
     data () {

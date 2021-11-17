@@ -58,6 +58,24 @@ const ApiService = {
   },
 
   /**
+   * Set the POST HTTP request for upload
+   * @param resource
+   * @param files
+   * @returns {*}
+   */
+  upload (resource, files) {
+    ApiService.setHeader()
+    resource = 'api/' + resource
+    var formData = new FormData()
+    for (var i = 0; i < files.length; i++) { formData.append('file', files[i]) }
+    return Vue.axios.post(`${resource}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data; charset=utf-8',
+      },
+    })
+  },
+
+  /**
    * Send the UPDATE HTTP request
    * @param resource
    * @param slug
