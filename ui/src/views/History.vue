@@ -121,7 +121,7 @@
         ApiService.post('system/resend', this.selected)
           .then((response) => {
             this.$notification.success(
-              'Number of resent messages: ' + response.data.count,
+              'Number of resent files: ' + response.data.count,
             )
           })
           .catch((response) => {

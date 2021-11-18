@@ -3,13 +3,12 @@ package engine
 import (
 	"dd-opcda/db"
 	"dd-opcda/types"
-	"fmt"
 )
 
 func GetSetting(key string) (types.KeyValuePair, error) {
 	var item types.KeyValuePair
-	err := db.DB.Table("key_value_pairs").Find(&item, "key = ?", key).Error
-	return item, err
+	result := db.DB.First(&item, "key = ?", key)
+	return item, result.Error
 }
 
 func PutSetting(key string, value string) {
@@ -18,13 +17,16 @@ func PutSetting(key string, value string) {
 		db.DB.Save(item)
 	} else {
 		item := types.KeyValuePair{Key: key, Value: value}
-		db.DB.Create(item)
+		db.DB.Create(&item)
 	}
 }
 
-func InitSetting(key string, value string) {
-	if _, err := GetSetting(key); err != nil {
-		fmt.Println("SETTING:", key, "initalized with", value)
-		PutSetting(key, value)
+func InitSetting(key string, value string, description string) types.KeyValuePair {
+	item, err := GetSetting(key)
+	if err != nil {
+		item := types.KeyValuePair{Key: key, Value: value, Extra: description}
+		db.DB.Create(&item)
 	}
+
+	return item
 }

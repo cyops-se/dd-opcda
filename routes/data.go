@@ -17,6 +17,7 @@ func RegisterDataRoutes(api fiber.Router) {
 	api.Get("/data/:type/field/:field/:value", GetDataByField)
 	api.Post("/data/:type", NewData)
 	api.Put("/data/:type", UpdateData)
+	api.Delete("/data/:type", DeleteDataAllItems)
 	api.Delete("/data/:type/:id", DeleteDataByID)
 	api.Delete("/data/:type/field/:field/:value", DeleteDataByField)
 }
@@ -58,9 +59,6 @@ func GetDataByField(c *fiber.Ctx) error {
 	if result := db.DB.Find(items, conditions); result.Error != nil {
 		msg := db.Log("error", "Failed to find items", fmt.Sprintf("Item type '%s', field: %s, value: %s, database error: %s", table, field, value, result.Error))
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"msg": msg})
-	} else if result.RowsAffected == 0 {
-		msg := db.Log("error", "No items found", fmt.Sprintf("Item type '%s', field: %s, value: %s", table, field, value))
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"msg": msg})
 	}
 
 	return c.Status(http.StatusOK).JSON(items)
@@ -88,12 +86,11 @@ func UpdateData(c *fiber.Ctx) error {
 	table := c.Params("type")
 	item := types.CreateType(table)
 	if err := c.BodyParser(&item); err != nil {
-		db.Log("error", "Failed to map provided data to type", err.Error())
-		return c.Status(503).SendString(err.Error())
+		e := db.Error("Failed to update item", "Unable to map provided data to type: %s", err.Error())
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": e.Error()})
 	}
 
 	db.DB.Save(item)
-	db.Log("trace", "Item updated", fmt.Sprintf("Type: %s, item: %#v", table, item))
 
 	c.Status(200)
 	return c.JSON(item)
@@ -104,10 +101,9 @@ func DeleteDataByID(c *fiber.Ctx) error {
 	table := c.Params("type")
 	item := types.CreateType(table)
 
-	if err := db.DB.Delete(item, id).Error; err != nil {
-		fmt.Printf("DELETE FAIL: %#v (%d)\n", item, id)
-		db.Log("error", "Failed to delete item", err.Error())
-		return c.Status(503).SendString(err.Error())
+	if err := db.DB.Unscoped().Delete(item, id).Error; err != nil {
+		e := db.Error("Failed to delete item", "Error from database: %s", err.Error())
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": e.Error()})
 	}
 
 	db.Log("trace", "Item deleted", fmt.Sprintf("Type: %s, ID: %s", table, id))
@@ -123,13 +119,23 @@ func DeleteDataByField(c *fiber.Ctx) error {
 	item := types.CreateSlice(table)
 
 	conditions := map[string]interface{}{field: value}
-	if result := db.DB.Delete(item, conditions); result.Error != nil {
-		msg := db.Log("error", "Failed to delete item", fmt.Sprintf("Item type '%s', field: %s, value: %s, database error: %s", table, field, value, result.Error))
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"msg": msg})
-	} else if result.RowsAffected == 0 {
-		msg := db.Log("error", "No items found", fmt.Sprintf("Item type '%s', field: %s, value: %s", table, field, value))
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"msg": msg})
+	if result := db.DB.Unscoped().Delete(item, conditions); result.Error != nil {
+		e := db.Error("Failed to delete item", "Item type '%s', field: %s, value: %s, database error: %s", table, field, value, result.Error)
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": e.Error()})
 	}
 
 	return c.Status(http.StatusOK).JSON(item)
+}
+
+func DeleteDataAllItems(c *fiber.Ctx) error {
+	table := c.Params("type")
+	item := types.CreateSlice(table)
+
+	result := db.DB.Table(table).Where("1=1").Unscoped().Delete(&item)
+	if result.Error != nil {
+		e := db.Error("Failed to delete item", "Item type '%s',database error: %s", table, result.Error)
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": e.Error()})
+	}
+
+	return c.Status(http.StatusOK).JSON(&fiber.Map{"count": result.RowsAffected})
 }

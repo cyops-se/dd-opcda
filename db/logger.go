@@ -17,6 +17,12 @@ func Log(category string, title string, msg string) string {
 	return text
 }
 
+func Trace(title string, format string, args ...interface{}) error {
+	msg := fmt.Sprintf(format, args...)
+	text := Log("trace", title, msg)
+	return fmt.Errorf(text)
+}
+
 func Error(title string, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
 	text := Log("error", title, msg)

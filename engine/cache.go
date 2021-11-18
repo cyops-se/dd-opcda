@@ -3,6 +3,7 @@ package engine
 import (
 	"bufio"
 	"compress/gzip"
+	"dd-opcda/db"
 	"dd-opcda/types"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -44,10 +46,13 @@ var cacheInfo CacheInfo
 var cacheMutex sync.Mutex
 
 func InitCache() {
+	InitSetting("cache.retention", "7", "Number of days to retain cached files")
+
 	createFile()
 	prevRemainder = -1
 	channel = make(chan types.DataMessage)
 	go processMessages()
+	go pruneCache()
 }
 
 func CloseCache() {
@@ -56,7 +61,6 @@ func CloseCache() {
 		fw.Flush()
 		gzw.Close()
 		file.Close()
-		log.Printf("CACHE: closed\n")
 	}
 }
 
@@ -254,4 +258,35 @@ func createFile() {
 	gzw = gzip.NewWriter(file)
 	fw = bufio.NewWriter(gzw)
 	firstWrite = true
+}
+
+func pruneCache() {
+	days := 7
+
+	// Check once an hour
+	ticker := time.NewTicker(time.Second * 10)
+	for {
+		<-ticker.C
+
+		if s, err := GetSetting("cache.retention"); err == nil {
+			days, _ = strconv.Atoi(s.Value)
+			if days < 1 {
+				days = 7
+			}
+		}
+
+		utc := time.Now().UTC()
+		refreshCache()
+		count := 0
+		for _, item := range cacheInfo.Items {
+			if utc.Sub(item.Time) > time.Duration(uint64(days)*24*uint64(time.Hour)) {
+				os.Remove(item.Filename)
+				count++
+			}
+		}
+
+		if count > 0 {
+			db.Trace("Cache pruned", "%d files pruned from cache", count)
+		}
+	}
 }

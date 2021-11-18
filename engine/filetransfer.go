@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"strconv"
 	"time"
 )
 
@@ -35,9 +36,12 @@ type context struct {
 var proxy *types.DiodeProxy
 
 func InitFileTransfer() error {
+	m, _ := strconv.Atoi(InitSetting("filetransfer.modulus", "20", "Number of packets to send before quick pause").Value)
+	d, _ := strconv.Atoi(InitSetting("filetransfer.msdelay", "20", "Number of milliseconds to pause before start sending again").Value)
+
 	proxy = FirstProxy()
 	if proxy != nil {
-		ctx := initContext()
+		ctx := initContext(m, d)
 		log.Println("SENDER")
 		go monitorFilesystem(ctx)
 		return nil
@@ -46,8 +50,8 @@ func InitFileTransfer() error {
 	return db.Error("file transfer disabled", "No proxy defined. At least one proxy must be defined")
 }
 
-func initContext() *context {
-	ctx := &context{basedir: "outgoing", newdir: "new", processingdir: "processing", donedir: "done", modulus: 20, msdelay: 20}
+func initContext(m int, d int) *context {
+	ctx := &context{basedir: "outgoing", newdir: "new", processingdir: "processing", donedir: "done", modulus: m, msdelay: d}
 	os.MkdirAll(path.Join(ctx.basedir, ctx.newdir), 0755)
 	os.MkdirAll(path.Join(ctx.basedir, ctx.processingdir), 0755)
 	os.MkdirAll(path.Join(ctx.basedir, ctx.donedir), 0755)
@@ -74,7 +78,7 @@ func processDirectory(ctx *context, dirname string) {
 			filename := path.Join(readdir, fi.Name())
 			movename := path.Join(processingdir, fi.Name())
 			if err := os.Rename(filename, movename); err == nil {
-				log.Printf("Requested processing of file: %s (%s)", filename, movename)
+				// log.Printf("Requested processing of file: %s (%s)", filename, movename)
 				info := &types.FileInfo{Name: fi.Name(), Path: dirname, Size: int(fi.Size()), Date: fi.ModTime()}
 				NotifySubscribers("filetransfer.request", info)
 				sendFile(ctx, info) // Do it sequentially to minimize packet loss
@@ -102,6 +106,11 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 	if fi.IsDir() {
 		log.Println("'filename' points to a directory, not a file:", filename)
 		return fmt.Errorf("directory, not file")
+	}
+
+	if fi.Size() == 0 {
+		log.Println("'filename' is empty:", filename)
+		return fmt.Errorf("empty file")
 	}
 
 	target := fmt.Sprintf("%s:%d", proxy.EndpointIP, proxy.FilePort)
@@ -138,7 +147,7 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 
 		if counter%1000 == 0 {
 			percent := float64(total) / float64(info.Size) * 100.0
-			log.Printf("Progress %.2f (%d / %d)", percent, total, info.Size)
+			// log.Printf("Progress %.2f (%d / %d)", percent, total, info.Size)
 			progress := &types.FileProgress{File: info, TotalSent: total, PercentDone: percent}
 			NotifySubscribers("filetransfer.progress", progress)
 		}
@@ -156,16 +165,18 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 
 	movename := path.Join(todir, name)
 	if err = os.Rename(filename, movename); err == nil {
-		log.Printf("Done processing file: %s (%s)", filename, movename)
+		// log.Printf("Done processing file: %s (%s)", filename, movename)
+		db.Trace("File transfer complete", "File %s, size %d transferred as requested by operator", filename, info.Size)
 	} else {
-		log.Printf("Failed to move file after processing: %s", err.Error())
+		db.Error("Failed to move file", "Error when attempting to move file after file was transferred, file %s, size %d, error %s", filename, info.Size, err.Error())
+		// log.Printf("Failed to move file after processing: %s", err.Error())
 	}
 
 	NotifySubscribers("filetransfer.complete", info)
 
 	time.Sleep(time.Millisecond)
 
-	return nil
+	return err
 }
 
 func calcHash(filename string) hash.Hash {

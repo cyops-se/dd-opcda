@@ -8,14 +8,6 @@
     >
       Upload files
     </v-btn>
-    <!-- v-btn
-      color="primary"
-      dark
-      class="mb-3 ml-3"
-      @click="sendHistory"
-    >
-      Transfer history cache
-    </v-btn -->
     <v-card v-if="progress && progress.file">
       <v-card-title>{{ progress.file.path }}/{{ progress.file.name }}<v-spacer />{{ progress.percentdone.toFixed(2) }}%</v-card-title>
       <v-card-text>
@@ -77,14 +69,6 @@
             this.$notification.success('Files successfully uploaded!')
           }).catch(response => {
             this.$notification.error('Failed to upload files!' + response)
-          })
-      },
-      sendHistory () {
-        ApiService.get('system/sendhistory')
-          .then(response => {
-            this.$notification.success('Sending of full history cache requested!')
-          }).catch(response => {
-            this.$notification.error('Failed to request sending of history cache!' + response)
           })
       },
     },

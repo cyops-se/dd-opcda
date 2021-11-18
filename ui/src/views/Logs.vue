@@ -15,6 +15,14 @@
           single-line
           hide-details
         />
+        <v-btn
+          color="primary"
+          dark
+          class="ml-4"
+          @click="clearAll"
+        >
+          Clear all entries
+        </v-btn>
       </v-card-title>
       <v-data-table
         :headers="headers"
@@ -43,27 +51,43 @@
           align: 'start',
           filterable: true,
           value: 'time',
-          width: 250,
+          width: 200,
         },
-        { text: 'Category', value: 'category', width: 150 },
-        { text: 'Title', value: 'title', width: 150 },
-        { text: 'Description', value: 'description' },
+        { text: 'Category', value: 'category', width: '10%' },
+        { text: 'Title', value: 'title', width: '20%' },
+        { text: 'Description', value: 'description', width: '60%' },
       ],
       items: [],
       sortDesc: true,
     }),
 
-    created () {
-      ApiService.get('data/logs')
-        .then(response => {
-          for (const i of response.data) {
-            i.time = i.time.replace('T', ' ').replace('Z', '').substring(0, 19)
-          }
-          this.items = response.data
-          this.loading = false
-        }).catch(response => {
-          console.log('ERROR response: ' + JSON.stringify(response))
-        })
+    mounted () {
+      this.refresh()
+    },
+
+    methods: {
+      refresh () {
+        ApiService.get('data/logs')
+          .then(response => {
+            for (const i of response.data) {
+              i.time = i.time.replace('T', ' ').replace('Z', '').substring(0, 19)
+            }
+            this.items = response.data
+            this.loading = false
+          }).catch(response => {
+            console.log('ERROR response: ' + JSON.stringify(response))
+          })
+      },
+
+      clearAll () {
+        ApiService.delete('data/logs')
+          .then(response => {
+            this.$notification.success('Log entries cleared!')
+            this.refresh()
+          }).catch(response => {
+            console.log('ERROR response: ' + JSON.stringify(response))
+          })
+      },
     },
   }
 </script>

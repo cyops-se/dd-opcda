@@ -19,7 +19,7 @@
           v-model="dialog"
           max-width="600px"
         >
-          <template v-slot:activator="{ on, attrs }">
+          <!--template v-slot:activator="{ on, attrs }">
             <v-btn
               color="primary"
               dark
@@ -29,7 +29,7 @@
             >
               New Setting
             </v-btn>
-          </template>
+          </template-->
           <v-card>
             <v-card-title>
               <span class="text-h5">Setting</span>
@@ -41,13 +41,22 @@
                   <v-col
                     cols="12"
                   >
-                    <v-text-field
+                    <span class="text-h4">{{ editedItem.key }}</span>
+                    <v-divider
+                      class="my-3"
+                    />
+                    {{ editedItem.extra }}
+                    <v-divider
+                      class="mt-3"
+                    />
+                    <!-- v-text-field
                       v-model="editedItem.key"
                       label="Key"
-                      outlined
                       hide-details
+                      readonly
+                      solo
                       class="mb-0"
-                    />
+                    / -->
                   </v-col>
                   <v-col
                     cols="12"
@@ -92,11 +101,11 @@
       >
         mdi-pencil
       </v-icon>
-      <v-icon
+      <!--v-icon
         @click="deleteItem(item)"
       >
         mdi-delete
-      </v-icon>
+      </v-icon-->
     </template>
   </v-data-table>
 </template>
@@ -112,8 +121,9 @@
       search: '',
       loading: false,
       headers: [
-        { text: 'Key', value: 'key', width: '30%' },
-        { text: 'Value', value: 'value', width: '70%' },
+        { text: 'Key', value: 'key', width: '20%' },
+        { text: 'Value', value: 'value', width: '20%' },
+        { text: 'Description', value: 'extra', width: '60%' },
         { text: 'Actions', value: 'actions', width: 1, sortable: false },
       ],
       items: [],

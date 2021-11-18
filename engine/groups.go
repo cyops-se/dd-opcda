@@ -117,6 +117,8 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 }
 
 func InitGroups() {
+	InitSetting("tagpathdelimiter", ".", "Delimiter in OPC DA tag paths. Differs between OPC DA servers")
+
 	items, _ := GetGroups()
 	for _, item := range items {
 		item.Status = types.GroupStatusNotRunning
