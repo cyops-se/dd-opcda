@@ -94,7 +94,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			// Send batch when msg.Points is full (keep it small to avoid fragmentation)
 			if b == len(msg.Points)-1 {
 				data, _ := json.Marshal(msg)
-				proxy := proxies[group.DiodeProxyID]
+				proxy := FirstProxy() // proxies[group.DiodeProxyID]
 				proxy.DataChan <- data
 				b = 0
 				msg.Sequence++
