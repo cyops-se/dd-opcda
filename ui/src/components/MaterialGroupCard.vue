@@ -7,40 +7,33 @@
       <v-sheet
         :color="copy.status === 1 ? 'success' : 'error'"
         width="100%"
-        class="overflow-hidden mt-n9 transition-swing v-card--material__sheet"
+        class="overflow-hidden mt-n9 transition-swing v-card--material__sheet d-flex justify-center"
+        justify="center"
         elevation="6"
         max-width="100%"
         rounded
       >
-        <v-theme-provider dark>
-          <v-row align="center">
-            <v-col cols="2">
-              <div class="pa-5">
-                <v-icon large>
-                  mdi-tag-multiple
-                </v-icon>
-              </div>
-            </v-col>
-            <v-col cols="6">
-              <div class="pa-5 white--text">
-                <span class="text-h3 text-no-wrap">
-                  {{ copy.name }}
-                </span>
-                <span class="text-h4 text-no-wrap">
-                  {{ copy.status == 1 ? 'RUNNING' : 'STOPPED' }}
-                </span>
-                <div>Send count: {{ copy.counter }}</div>
-              </div>
-            </v-col>
-            <v-col cols="2">
-              <div class="text-right">
-                <v-btn @click="startStop">
-                  <div v-html="copy.status == 1 ? 'STOP' : 'START'" />
-                </v-btn>
-              </div>
-            </v-col>
-          </v-row>
-        </v-theme-provider>
+        <div class="ml-3 my-auto">
+          <v-icon large>
+            mdi-tag-multiple
+          </v-icon>
+        </div>
+        <v-spacer />
+        <div class="pa-3 white--text my-auto">
+          <span class="text-h3 text-no-wrap">
+            {{ copy.name }}
+          </span>
+          <span class="text-h4 text-no-wrap">
+            {{ copy.status == 1 ? 'RUNNING' : 'STOPPED' }}
+          </span>
+          <div>Send count: {{ copy.counter }}</div>
+        </div>
+        <v-spacer />
+        <div class="my-auto mr-3">
+          <v-btn @click="startStop">
+            <div v-html="copy.status == 1 ? 'STOP' : 'START'" />
+          </v-btn>
+        </div>
       </v-sheet>
 
       <div class="pl-3 text-h4 v-card--material__title">

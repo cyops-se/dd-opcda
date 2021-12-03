@@ -15,7 +15,6 @@ type SystemInformation struct {
 var SysInfo SystemInformation
 
 func RegisterSystemRoutes(api fiber.Router) {
-	api.Get("/system/info", GetSysInfo)
 	api.Get("/system/sendhistory", SendFullCache)
 	api.Post("/system/resend", ResendCacheItems)
 }

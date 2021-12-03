@@ -49,9 +49,9 @@
 
     data: () => ({
       profile: [
-        { title: 'Profile', link: '/pages/profile' },
+        // { title: 'Profile', link: '/pages/profile' },
         // { title: 'Settings', link: '/pages/usersettings' },
-        { divider: true },
+        // { divider: true },
         { title: 'Log out', link: '/auth/logout' },
       ],
     }),

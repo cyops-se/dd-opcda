@@ -11,7 +11,7 @@ const ApiService = {
     Vue.use(VueAxios, axios)
 
     if (process.env.NODE_ENV === 'production') {
-      Vue.axios.defaults.baseURL = 'http://localhost:3000'
+      Vue.axios.defaults.baseURL = 'http://' + window.location.host
     } else {
       Vue.axios.defaults.baseURL = 'http://localhost:8080'
     }

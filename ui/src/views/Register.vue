@@ -18,7 +18,7 @@
           <v-spacer />
           <span
             style="font-size:0.6rem; "
-          >Version {{ version }}</span>
+          >{{ sysinfo.gitversion }}</span>
         </v-toolbar>
         <v-card-text>
           <v-form
@@ -54,10 +54,10 @@
 
             <v-text-field
               id="password2"
-              v-model="password"
+              v-model="password2"
               label="Password (confirm)"
               prepend-icon="mdi-lock"
-              type="password2"
+              type="password"
               :rules="[v => !!v || 'Password confirmation is required']"
               required
             />
@@ -92,15 +92,17 @@
     },
 
     data: () => ({
+      fullname: null,
       email: null,
       password: null,
+      password2: null,
       emailRules: [
         v => !!v || 'Email is required',
         v => /.+@.+/.test(v) || 'E-mail must be valid',
       ],
     }),
 
-    computed: { version: get('app/version') },
+    computed: { sysinfo: get('app/sysinfo') },
 
     methods: {
       async submit () {
@@ -115,7 +117,7 @@
 
             this.$store
               .dispatch('auth/register', { fullname, email, password })
-              .then(() => this.$router.push({ name: 'Dashboard' }))
+              .then(() => this.$router.push({ name: 'Login' }))
               .catch(() => {})
           } catch (e) {
             this.responseStatus = e.responseStatus || e

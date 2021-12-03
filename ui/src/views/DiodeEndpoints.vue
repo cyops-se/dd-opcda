@@ -27,7 +27,7 @@
               v-bind="attrs"
               v-on="on"
             >
-              New Diode Proxy
+              New End-point
             </v-btn>
           </template>
           <v-card>

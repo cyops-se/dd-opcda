@@ -6,7 +6,7 @@
       class="mb-3"
       @click="uploadDialog = !uploadDialog"
     >
-      Upload files
+      Upload file
     </v-btn>
     <v-card v-if="progress && progress.file">
       <v-card-title>{{ progress.file.path }}/{{ progress.file.name }}<v-spacer />{{ progress.percentdone.toFixed(2) }}%</v-card-title>
@@ -68,7 +68,7 @@
           .then(response => {
             this.$notification.success('Files successfully uploaded!')
           }).catch(response => {
-            this.$notification.error('Failed to upload files!' + response)
+            this.$notification.error('Failed to upload file!' + response)
           })
       },
     },

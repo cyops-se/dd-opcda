@@ -61,6 +61,7 @@ func RunWeb() {
 
 	api := app.Group("/api")
 	routes.RegisterAuthRoutes(api)
+	api.Get("/system/info", routes.GetSysInfo)
 
 	// JWT Middleware
 	app.Use(jwtware.New(jwtware.Config{

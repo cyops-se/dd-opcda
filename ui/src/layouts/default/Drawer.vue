@@ -112,7 +112,7 @@
     data: () => ({
       about: [
         {
-          href: 'http://cyops.se/about',
+          href: 'http://cyops.se/en/about',
           text: 'About cyops.se',
         },
         // {

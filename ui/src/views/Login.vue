@@ -12,9 +12,9 @@
         justify="center"
       >
         <v-img
-          class="rounded-circle elevation-12 mt-n12"
+          class="rounded-circle elevation-12"
           src="@/assets/cyops-se.png"
-          width="128"
+          max-width="128"
           contain
           :aspect-ratio="1"
         />
@@ -25,11 +25,11 @@
           dark
           flat
         >
-          <v-toolbar-title>cyops-se ui boilerplate</v-toolbar-title>
+          <v-toolbar-title>Login</v-toolbar-title>
           <v-spacer />
           <span
             style="font-size:0.6rem; "
-          >Version {{ version }}</span>
+          >{{ sysinfo.gitversion }}</span>
         </v-toolbar>
         <v-form
           ref="form"
@@ -39,7 +39,7 @@
           <v-card-text>
             <v-text-field
               v-model="email"
-              label="Login"
+              label="E-mail"
               prepend-icon="mdi-account"
               type="text"
               :rules="emailRules"
@@ -107,7 +107,7 @@
       ],
     }),
 
-    computed: { version: get('app/version') },
+    computed: { sysinfo: get('app/sysinfo') },
 
     mounted () {
     },

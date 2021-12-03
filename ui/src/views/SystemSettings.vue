@@ -19,17 +19,6 @@
           v-model="dialog"
           max-width="600px"
         >
-          <!--template v-slot:activator="{ on, attrs }">
-            <v-btn
-              color="primary"
-              dark
-              class="mb-2"
-              v-bind="attrs"
-              v-on="on"
-            >
-              New Setting
-            </v-btn>
-          </template-->
           <v-card>
             <v-card-title>
               <span class="text-h5">Setting</span>
@@ -49,14 +38,6 @@
                     <v-divider
                       class="mt-3"
                     />
-                    <!-- v-text-field
-                      v-model="editedItem.key"
-                      label="Key"
-                      hide-details
-                      readonly
-                      solo
-                      class="mb-0"
-                    / -->
                   </v-col>
                   <v-col
                     cols="12"
@@ -101,11 +82,6 @@
       >
         mdi-pencil
       </v-icon>
-      <!--v-icon
-        @click="deleteItem(item)"
-      >
-        mdi-delete
-      </v-icon-->
     </template>
   </v-data-table>
 </template>

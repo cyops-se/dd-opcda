@@ -2,7 +2,7 @@
  * Service to call HTTP request via Axios
  */
 const WebsocketService = {
-  baseURL: 'ws://localhost:3000/ws',
+  baseURL: 'ws://' + window.location.host.replace('8080', '3000') + '/ws',
   connection: null,
   subscriptions: [],
 
