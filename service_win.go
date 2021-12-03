@@ -10,30 +10,43 @@ import (
 	"fmt"
 	"log"
 	"os"
-	runtimedebug "runtime/debug"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
-	// "golang.org/x/sys/windows/svc/eventlog"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
+
+var elog debug.Log
 
 type myservice struct{}
 
-// Windows services can't print to console, so we have to explicitly handle any panics.
-func HandleAnyError() {
+func handlePanic() {
 	if r := recover(); r != nil {
-		log.Printf("Panic: %v\n%s\n", r, string(runtimedebug.Stack()))
+		elog.Error(1, fmt.Sprintf("recover: %#v", r))
+		return
+	}
+}
+
+func reportError(f string, args ...interface{}) {
+	msg := fmt.Sprintf(f, args)
+	log.Println(msg)
+	if elog != nil {
+		elog.Error(1, msg)
+	}
+}
+
+func reportInfo(f string, args ...interface{}) {
+	msg := fmt.Sprintf(f, args)
+	log.Println(msg)
+	if elog != nil {
+		elog.Info(1, msg)
 	}
 }
 
 func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	defer HandleAnyError()
-	if ctx.cmd == "debug" {
-		log.Println("Logs are now redirected to '/cyops/logs/dd-opcda.*'")
-		os.Stdout, _ = os.OpenFile("/cyops/logs/dd-opcda.out.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755)
-		os.Stderr, _ = os.OpenFile("/cyops/logs/dd-opcda.err.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755)
-	}
+	defer handlePanic()
 
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 	changes <- svc.Status{State: svc.StartPending}
@@ -42,14 +55,25 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	go runEngine()
-	if ctx.list || ctx.create {
-		log.Println("Waiting 10 secs before returning")
-		time.Sleep(10 * time.Second)
-		return
+	os.MkdirAll("/cyops/logs", 0755)
+	if !ctx.trace {
+		reportInfo("Logs are now redirected to '/cyops/logs/dd-opcda.*'")
+		if stdout, err := os.OpenFile("/cyops/logs/dd-opcda.out.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '/cyops/logs/dd-opcda.out.log', error; %s", err.Error())
+		} else {
+			os.Stdout = stdout
+		}
+		if stderr, err := os.OpenFile("/cyops/logs/dd-opcda.err.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '/cyops/logs/dd-opcda.err.log', error; %s", err.Error())
+		} else {
+			os.Stderr = stderr
+		}
 	}
 
-	log.Println("entering loop")
+	reportInfo("starting engine")
+	go runEngine()
+
+	reportInfo("entering service control loop")
 
 loop:
 	for {
@@ -65,8 +89,10 @@ loop:
 				time.Sleep(100 * time.Millisecond)
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.StopPending}
-				log.Println( "Shutting down service")
+				// golang.org/x/sys/windows/svc.TestExample is verifying this output.
+				testOutput := strings.Join(args, "-")
+				testOutput += fmt.Sprintf("-%d", c.Context)
+				reportInfo(testOutput)
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -75,35 +101,35 @@ loop:
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 				tick = fasttick
 			default:
-				log.Printf("unexpected control request #%d\n", c)
+				reportError("unexpected control request #%d", c)
 			}
 		}
 	}
-	log.Println("Exiting service")
+	changes <- svc.Status{State: svc.StopPending}
 	return
-}
-
-func usage(errmsg string) {
-	fmt.Fprintf(os.Stderr,
-		"%s\n\n"+
-			"usage: %s <command>\n"+
-			"       where <command> is one of\n"+
-			"       install, remove, debug, start, stop, pause or continue.\n",
-		errmsg, os.Args[0])
-	os.Exit(2)
 }
 
 func runService(name string, isDebug bool) {
 	var err error
-	log.Printf("starting %s service\n", name)
+	if isDebug {
+		elog = debug.New(name)
+	} else {
+		elog, err = eventlog.Open(name)
+		if err != nil {
+			return
+		}
+	}
+	defer elog.Close()
+
+	reportInfo("starting %s service", name)
 	run := svc.Run
 	if isDebug {
 		run = debug.Run
 	}
 	err = run(name, &myservice{})
 	if err != nil {
-		log.Printf("%s service failed: %v\n", name, err)
+		reportError("%s service failed: %v", name, err)
 		return
 	}
-	log.Printf("%s service stopped\n", name)
+	reportInfo("%s service stopped", name)
 }
