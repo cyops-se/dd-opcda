@@ -83,3 +83,21 @@ netsh interface ipv4 set neighbors Interface="DIODEnet" address=10.0.0.10 neighb
 Note that the MAC address is called '```neighbor```' in ```netsh``` command!
 
 Running '```arp -a```' should reveal the new entry for the correct
+
+## Installing dd-opcda as Windows service
+
+Start a command prompt (cmd) or powershell terminal as Administrator (or as a user with privileges to install new services) and navigate to the directory where the dd-opcda executable is located.
+
+Run the following command:
+
+```
+.\dd-opcda -cmd install
+```
+
+This will create a new service entry. Now open the services management console (services.msc) and find 'dd-opcda from cyops-se'. Change start method and account information if needed. Start method must be changed to **Automatic** for the service to start automatically after a system reboot, and the account under which the service runs must be permitted to access the OPC DA server.
+
+To remove the service, just run the following command as Administrator:
+
+```
+.\dd-opcda -cmd remove
+```

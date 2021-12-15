@@ -145,6 +145,7 @@ Files are transferred one at a time, and the progress of the currently transferr
 Simple log view listing all events in the system. Use the search feature to filter out events of interest and use column sorting e.g. to get the timeline in ascending or descending order.
 **CLEAR ALL ENTRIES** wipes the log clean.
 
+#Users
 ![users](./assets/users-1.png)
 
 Simple list of registered users. It is possible to change name and e-mail for existing users or remove them from the system. There is currently no permissions or access rights associated, nor is there any audit logs.

@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/cyops-se/opc"
 )
+
+var opcmutex sync.Mutex // Issue #3, no time to find out where thread insafety is (looks like it's in or below oleutil)
 
 func metaSender(diodeProxy *types.DiodeProxy) {
 	address := fmt.Sprintf("%s:%d", diodeProxy.EndpointIP, diodeProxy.MetaPort)
@@ -43,6 +46,12 @@ func metaSender(diodeProxy *types.DiodeProxy) {
 	}
 }
 
+func read(client *opc.Connection) map[string]opc.Item {
+	opcmutex.Lock()
+	defer opcmutex.Unlock()
+	return (*client).Read()
+}
+
 func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 	timer := time.NewTicker(time.Duration(group.Interval) * time.Second)
 
@@ -66,7 +75,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 
 	db.Log("trace", "Collecting tags", fmt.Sprintf("%d tags from group: %s (id: %d)", len(tags), group.Name, group.ID))
 
-	items := client.Read() // This is only to get the number of items
+	items := read(&client) // This is only to get the number of items
 	msg := &types.DataMessage{Version: 2, Group: group.Name, Interval: group.Interval}
 	msg.Count = 10
 	msg.Points = make([]types.DataPoint, msg.Count)
@@ -83,7 +92,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			break
 		}
 
-		items = client.Read()
+		items = read(&client)
 
 		for k, v := range items {
 			msg.Points[b].Time = v.Timestamp

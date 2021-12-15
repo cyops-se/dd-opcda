@@ -143,6 +143,7 @@
 </template>
 
 <script>
+  import Vue from 'vue'
   import ApiService from '@/services/api.service'
   export default {
     name: 'TagTableView',
@@ -184,25 +185,29 @@
     }),
 
     created () {
-      this.loading = true
-      ApiService.get('data/opc_tags')
-        .then(response => {
-          this.items = response.data
-          this.loading = false
-        }).catch(response => {
-          console.log('ERROR response: ' + JSON.stringify(response))
-        })
-      ApiService.get('data/opc_groups')
-        .then(response => {
-          this.groups = response.data
-          this.availableGroups = this.groups
-        }).catch(response => {
-          console.log('ERROR response: ' + JSON.stringify(response))
-        })
+      this.update()
     },
 
     methods: {
       initialize () {},
+
+      update () {
+        this.loading = true
+        ApiService.get('data/opc_tags')
+          .then(response => {
+            this.items = response.data
+            this.loading = false
+          }).catch(response => {
+            console.log('ERROR response: ' + JSON.stringify(response))
+          })
+        ApiService.get('data/opc_groups')
+          .then(response => {
+            this.groups = response.data
+            this.availableGroups = this.groups
+          }).catch(response => {
+            console.log('ERROR response: ' + JSON.stringify(response))
+          })
+      },
 
       editItem (item) {
         this.editedIndex = this.items.indexOf(item)
@@ -212,7 +217,6 @@
       },
 
       deleteItem (item) {
-        console.log('deleting item: ' + JSON.stringify(item))
         ApiService.delete('data/opc_tags/' + item.ID)
           .then(response => {
             for (var i = 0; i < this.items.length; i++) {
@@ -234,7 +238,6 @@
 
       save () {
         if (this.editedIndex > -1) {
-          console.log('edited item: ' + JSON.stringify(this.editedItem))
           Object.assign(this.items[this.editedIndex], this.editedItem)
           ApiService.put('data/opc_tags', this.editedItem)
             .then(response => {
@@ -315,6 +318,14 @@
           var tagname = record[0]
           var groupid = parseInt(record[1])
           var found = false
+          var group = undefined
+          
+          for ( var g = 0; g < this.groups.length; g++ ) {
+            if (this.groups[g].ID === groupid) {
+              group = this.groups[g]
+              break
+            }
+          }
 
           for (var i = 0; i < this.items.length; i++) {
             var item = this.items[i]
@@ -324,9 +335,10 @@
             var same = item.groupid === groupid
 
             if (!same) {
+              // Update group
               item.groupid = groupid
+              item.group = group
               item.changed = true
-              console.log('item changed: ' + item.name)
             } else {
               item.changed = false
             }
@@ -334,9 +346,8 @@
           }
 
           if (!found) {
-            var newitem = { name: tagname, groupid: groupid, new: true }
+            var newitem = { name: tagname, groupid: groupid, group: group, new: true }
             this.items.push(newitem)
-            console.log('new item: ' + newitem.name)
           }
         }
 
@@ -351,6 +362,7 @@
         ApiService.post('opc/tag/changes', this.items)
           .then(response => {
             t.$notification.success('Changes saved')
+            t.update()
           }).catch(function (response) {
             t.$notification.error('Failed to save changes: ' + response)
           })

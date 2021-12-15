@@ -450,7 +450,10 @@ func PostTagChanges(c *fiber.Ctx) (err error) {
 			}
 
 			if !found {
-				item.GroupID = defaultgroup.ID
+				if item.GroupID == 0 {
+					item.GroupID = defaultgroup.ID
+				}
+
 				if err = db.DB.Create(&item).Error; err == nil {
 					newcount++
 				} else {
