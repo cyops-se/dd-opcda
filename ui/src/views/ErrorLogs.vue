@@ -31,6 +31,7 @@
 
 <script>
   import ApiService from '@/services/api.service'
+  import WebsocketService from '@/services/websocket.service'
   export default {
     name: 'ErrorLogsTablesView',
 
@@ -43,10 +44,10 @@
           align: 'start',
           filterable: true,
           value: 'time',
-          width: 250,
+          width: 180,
         },
-        { text: 'Category', value: 'category', width: 150 },
-        { text: 'Title', value: 'title', width: 150 },
+        { text: 'Category', value: 'category', width: 100 },
+        { text: 'Title', value: 'title', width: 200 },
         { text: 'Description', value: 'description' },
       ],
       items: [],
@@ -54,16 +55,26 @@
     }),
 
     created () {
-      ApiService.get('data/logs/field/category/error')
-        .then(response => {
-          for (const i of response.data) {
-            i.time = i.time.replace('T', ' ').replace('Z', '').substring(0, 19)
-          }
-          this.items = response.data
-          this.loading = false
-        }).catch(response => {
-          console.log('ERROR response: ' + JSON.stringify(response))
-        })
+      WebsocketService.topic('logger.error', this, function (topic, entry, target) {
+        target.refresh()
+      })
+
+      this.refresh()
+    },
+
+    methods: {
+      refresh () {
+        ApiService.get('data/logs/field/category/error')
+          .then(response => {
+            for (const i of response.data) {
+              i.time = i.time.replace('T', ' ').replace('Z', '').substring(0, 19)
+            }
+            this.items = response.data
+            this.loading = false
+          }).catch(response => {
+            console.log('ERROR response: ' + JSON.stringify(response))
+          })
+      },
     },
   }
 </script>

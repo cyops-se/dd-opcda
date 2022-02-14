@@ -3,6 +3,7 @@ package routes
 import (
 	"dd-opcda/db"
 	"dd-opcda/engine"
+	"dd-opcda/logger"
 	"dd-opcda/types"
 	"fmt"
 	"log"
@@ -215,18 +216,18 @@ func GetGroups(c *fiber.Ctx) (err error) {
 func NewGroup(c *fiber.Ctx) (err error) {
 	var group types.OPCGroup
 	if err := c.BodyParser(&group); err != nil {
-		db.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
+		logger.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
 	if group.DefaultGroup {
 		if err := db.DB.Exec("update opc_groups set 'default_group' = false").Error; err != nil {
-			db.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
+			logger.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
 		}
 	}
 
 	if err := db.DB.Save(&group).Error; err != nil {
-		db.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
+		logger.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
@@ -237,19 +238,19 @@ func NewGroup(c *fiber.Ctx) (err error) {
 func UpdateGroup(c *fiber.Ctx) (err error) {
 	var data types.OPCGroup
 	if err := c.BodyParser(&data); err != nil {
-		db.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
+		logger.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
 	var group types.OPCGroup
 	if err := db.DB.First(&group, "ID = ?", data.ID).Error; err != nil {
-		db.Log("error", "UpdateGroup failed (first)", fmt.Sprintf("%v", err))
+		logger.Log("error", "UpdateGroup failed (first)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
 	if data.DefaultGroup {
 		if err := db.DB.Exec("update opc_groups set 'default_group' = false").Error; err != nil {
-			db.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
+			logger.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
 		}
 	}
 
@@ -261,7 +262,7 @@ func UpdateGroup(c *fiber.Ctx) (err error) {
 	group.RunAtStart = data.RunAtStart
 
 	if err := db.DB.Save(&group).Error; err != nil {
-		db.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
+		logger.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 

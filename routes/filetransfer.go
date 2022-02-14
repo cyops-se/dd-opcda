@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"dd-opcda/db"
 	"dd-opcda/engine"
+	"dd-opcda/logger"
 	"log"
 	"net/http"
 	"os"
@@ -30,7 +30,7 @@ func PostFileTransferInfo(c *fiber.Ctx) error {
 func UploadFilesToTransfer(c *fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {
-		db.Log("error", "No file provided", err.Error())
+		logger.Log("error", "No file provided", err.Error())
 		return c.Status(503).SendString(err.Error())
 	}
 
@@ -45,10 +45,10 @@ func UploadFilesToTransfer(c *fiber.Ctx) error {
 	filename := path.Join("./outgoing/new", file.Filename) //fmt.Sprintf("./outgoing/new/%s", file.Filename)
 	if err := c.SaveFile(file, filename); err != nil {
 		// msg := fmt.Sprintf("failed to save file, name: '%s', size: %d, error: %s", file.Filename, file.Size, err.Error())
-		e := db.Error("Upload of file to transfer failed", "failed to save file, name: '%s', size: %d, error: %s", file.Filename, file.Size, err.Error())
+		e := logger.Error("Upload of file to transfer failed", "failed to save file, name: '%s', size: %d, error: %s", file.Filename, file.Size, err.Error())
 		return c.Status(http.StatusInternalServerError).JSON(&fiber.Map{"error": e.Error()})
 	} else {
-		db.Trace("File transfer requested", "File %s, size %d requested to be transferred by operator", file.Filename, file.Size) // fmt.Sprintf("name: '%s', size: %d", file.Filename, file.Size))
+		logger.Trace("File transfer requested", "File %s, size %d requested to be transferred by operator", file.Filename, file.Size) // fmt.Sprintf("name: '%s', size: %d", file.Filename, file.Size))
 	}
 
 	return c.Status(http.StatusOK).JSON(file)

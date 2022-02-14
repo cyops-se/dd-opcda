@@ -4,26 +4,26 @@ import (
 	"dd-opcda/db"
 	"dd-opcda/engine"
 	"dd-opcda/routes"
+	"dd-opcda/web"
 	"flag"
 	"fmt"
 	"log"
-	"time"
 
 	"golang.org/x/sys/windows/svc"
 )
 
-type DataPoint struct {
-	Time    time.Time   `json:"t"`
-	Name    string      `json:"n"`
-	Value   interface{} `json:"v"`
-	Quality int         `json:"q"`
-}
+// type DataPoint struct {
+// 	Time    time.Time   `json:"t"`
+// 	Name    string      `json:"n"`
+// 	Value   interface{} `json:"v"`
+// 	Quality int         `json:"q"`
+// }
 
-type DataMessage struct {
-	Counter uint64      `json:"counter"`
-	Count   int         `json:"count"`
-	Points  []DataPoint `json:"points"`
-}
+// type DataMessage struct {
+// 	Counter uint64      `json:"counter"`
+// 	Count   int         `json:"count"`
+// 	Points  []DataPoint `json:"points"`
+// }
 
 type ConfigTagEntry struct {
 	Name string `json:"name"`
@@ -49,7 +49,7 @@ func main() {
 	svcName := "dd-opcda"
 	flag.StringVar(&ctx.cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
 	flag.BoolVar(&ctx.trace, "trace", false, "Prints traces of OCP data to the console")
-	flag.BoolVar(&ctx.version, "v", false, "Prints the commit hash and exists")
+	flag.BoolVar(&ctx.version, "v", false, "Prints the commit hash and exits")
 	flag.Parse()
 
 	routes.SysInfo.GitVersion = GitVersion
@@ -94,5 +94,5 @@ func runEngine() {
 	engine.InitServers()
 	engine.InitCache()
 	engine.InitFileTransfer()
-	go RunWeb()
+	go web.RunWeb()
 }

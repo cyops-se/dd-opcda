@@ -99,23 +99,34 @@
     created () {
       this.copy = Object.assign({}, this.group)
       var t = this
-      WebsocketService.topic('data.group', function (topic, group) {
+      WebsocketService.topic('data.group', this, function (topic, group) {
         if (t.copy.ID === group.ID) t.copy = group
+      })
+      WebsocketService.topic('group.failed', this, function (topic, group) {
+        if (t.copy.ID === group.ID) {
+          t.$notification.error('Failed to start group, please read logs')
+          t.copy.status = 0
+        }
+      })
+      WebsocketService.topic('group.started', this, function (topic, group) {
+        if (t.copy.ID === group.ID) {
+          t.$notification.success('Collection of group tags started')
+          t.copy.status = 1
+        }
+      })
+      WebsocketService.topic('group.stopped', this, function (topic, group) {
+        if (t.copy.ID === group.ID) {
+          t.$notification.success('Collection of group tags stopped')
+          t.copy.status = 0
+        }
       })
     },
 
     methods: {
       startStop () {
-        console.log('START STOP: ' + this.group.name)
-        var action = this.copy.status === 1 ? 'stop' : 'start'
+        var action = this.copy.status >= 1 ? 'stop' : 'start'
         ApiService.get('opc/group/' + action + '/' + this.group.ID)
           .then(response => {
-            this.$notification.success('Collection of group tags ' + (this.copy.status === 1 ? 'stopped' : 'started'))
-            this.copy.status = this.copy.status === 1 ? 0 : 1
-            if (this.copy.status === 1) {
-            } else {
-              console.log('clearing timer for: ' + this.group.name)
-            }
           }).catch(response => {
             console.log('ERROR response: ' + response.message)
             this.$notification.error('Failed to start collection of group tags: ' + response.message)

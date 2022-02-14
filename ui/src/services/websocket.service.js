@@ -40,15 +40,15 @@ const WebsocketService = {
       const subs = this.subscriptions[data.topic]
       if (subs) {
         for (var i = 0; i < subs.length; i++) {
-          subs[i](data.topic, message)
+          subs[i].callback(data.topic, message, subs[i].target)
         }
       }
     }
   },
 
-  topic: function (name, callback) {
+  topic: function (name, target, callback) {
     if (!this.subscriptions[name]) this.subscriptions[name] = []
-    this.subscriptions[name].push(callback)
+    this.subscriptions[name].push({ target: target, callback: callback })
   },
 }
 

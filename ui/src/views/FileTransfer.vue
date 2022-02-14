@@ -41,15 +41,15 @@
 
     created () {
       var t = this
-      WebsocketService.topic('filetransfer.request', function (topic, info) {
+      WebsocketService.topic('filetransfer.request', this, function (topic, info) {
         t.progress = { file: info, percentdone: 0.0 }
       })
 
-      WebsocketService.topic('filetransfer.progress', function (topic, progress) {
+      WebsocketService.topic('filetransfer.progress', this, function (topic, progress) {
         t.progress = progress
       })
 
-      WebsocketService.topic('filetransfer.complete', function (topic, info) {
+      WebsocketService.topic('filetransfer.complete', this, function (topic, info) {
         t.progress = undefined
       })
 

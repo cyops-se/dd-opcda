@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"dd-opcda/db"
+	"dd-opcda/logger"
 	"fmt"
 	"log"
 	"sync"
@@ -40,14 +40,14 @@ func InitServers() {
 	i := 0
 	if ao := opc.NewAutomationObject(); ao != nil {
 		serversfound := ao.GetOPCServers("localhost")
-		db.Log("trace", "OPC server init", fmt.Sprintf("Found %d server(s) on '%s':\n", len(serversfound), "localhost"))
+		logger.Log("trace", "OPC server init", fmt.Sprintf("Found %d server(s) on '%s':\n", len(serversfound), "localhost"))
 		for _, server := range serversfound {
-			db.Log("trace", "OPC server found", server)
+			logger.Log("trace", "OPC server found", server)
 			servers = append(servers, &Server{ProgID: server, ID: i})
 			i++
 		}
 	} else {
-		db.Log("error", "OPC server init failure", "Unable to get new automation object")
+		logger.Log("error", "OPC server init failure", "Unable to get new automation object")
 	}
 }
 

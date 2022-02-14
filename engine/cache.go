@@ -3,7 +3,7 @@ package engine
 import (
 	"bufio"
 	"compress/gzip"
-	"dd-opcda/db"
+	"dd-opcda/logger"
 	"dd-opcda/types"
 	"encoding/json"
 	"fmt"
@@ -286,7 +286,7 @@ func pruneCache() {
 		}
 
 		if count > 0 {
-			db.Trace("Cache pruned", "%d files pruned from cache", count)
+			logger.Trace("Cache pruned", "%d files pruned from cache", count)
 		}
 	}
 }

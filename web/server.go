@@ -1,7 +1,7 @@
-package main
+package web
 
 import (
-	"dd-opcda/engine"
+	ddlog "dd-opcda/logger"
 	"dd-opcda/routes"
 	"embed"
 	"io/fs"
@@ -21,6 +21,13 @@ var admin string
 
 //go:embed static/*
 var static embed.FS
+
+func handlePanic() {
+	if r := recover(); r != nil {
+		log.Println(r)
+		return
+	}
+}
 
 func RunWeb() {
 	defer handlePanic()
@@ -52,7 +59,7 @@ func RunWeb() {
 
 	// WebSocket registration
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		engine.RegisterWebsocket(c)
+		ddlog.RegisterWebsocket(c)
 		for c.Conn != nil {
 			time.Sleep(1)
 		}

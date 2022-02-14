@@ -2,6 +2,7 @@ package engine
 
 import (
 	"dd-opcda/db"
+	"dd-opcda/logger"
 	"dd-opcda/types"
 	"encoding/json"
 	"fmt"
@@ -18,11 +19,11 @@ var opcmutex sync.Mutex // Issue #3, no time to find out where thread insafety i
 func metaSender(diodeProxy *types.DiodeProxy) {
 	address := fmt.Sprintf("%s:%d", diodeProxy.EndpointIP, diodeProxy.MetaPort)
 
-	db.Log("trace", "Setting up outgoing META", address)
+	logger.Log("trace", "Setting up outgoing META", address)
 
 	con, err := net.Dial("udp", address)
 	if con == nil {
-		db.Log("error", "Failed to open emitter", fmt.Sprintf("UDP emitter to IP: %s could not be opened, error: %s", address, err.Error()))
+		logger.Log("error", "Failed to open emitter", fmt.Sprintf("UDP emitter to IP: %s could not be opened, error: %s", address, err.Error()))
 		return
 	}
 
@@ -55,25 +56,37 @@ func read(client *opc.Connection) map[string]opc.Item {
 func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 	timer := time.NewTicker(time.Duration(group.Interval) * time.Second)
 
-	tagnames := make([]string, len(tags))
-	for i, tag := range tags {
-		tagnames[i] = tag.Name
-	}
+	// tagnames := make([]string, len(tags))
+	// for i, tag := range tags {
+	// 	tagnames[i] = tag.Name
+	// }
 
-	client, err := opc.NewConnection(group.ProgID, // ProgId
+	client, err := opc.NewConnectionWithoutTags(group.ProgID, // ProgId
 		[]string{"localhost"}, //  OPC servers nodes
-		tagnames,              // slice of OPC tags
 	)
 
 	if err != nil {
-		db.Log("error", "Failed to create new connection to OPC DA server", fmt.Sprintf("Group name: %s (id: %d), progid: %s, err: %s, %s",
-			group.Name, group.ID, group.ProgID, err.Error(), tagnames))
+		logger.Log("error", "Failed to connect OPC DA server", fmt.Sprintf("Group: %s, progid: %s, err: %s", group.Name, group.ProgID, err.Error()))
+		logger.NotifySubscribers("group.failed", group)
 		return
 	}
 
 	defer client.Close()
 
-	db.Log("trace", "Collecting tags", fmt.Sprintf("%d tags from group: %s (id: %d)", len(tags), group.Name, group.ID))
+	// Adding items
+	for _, tag := range tags {
+		if err := client.AddSingle(tag.Name); err != nil {
+			logger.Log("error", "Unable to collect tag", fmt.Sprintf("%s, group: %s, progid: %s", tag.Name, group.Name, group.ProgID))
+		}
+	}
+
+	if len(client.Tags()) == 0 {
+		logger.Log("error", "No tags to collect", fmt.Sprintf("Group: %s, progid: %s", group.Name, group.ProgID))
+		logger.NotifySubscribers("group.failed", group)
+		return
+	}
+
+	logger.Log("trace", "Collecting tags", fmt.Sprintf("%d tags from group: %s", len(client.Tags()), group.Name))
 
 	items := read(&client) // This is only to get the number of items
 	msg := &types.DataMessage{Version: 2, Group: group.Name, Interval: group.Interval}
@@ -85,10 +98,13 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 	group.Status = types.GroupStatusRunning
 	db.DB.Save(group)
 
+	logger.NotifySubscribers("group.started", group)
+
 	var i, b int // golang always initialize to 0
 	for {
 		if g, _ := GetGroup(group.ID); g != nil && g.Status == types.GroupStatusNotRunning {
-			db.Log("info", "OPC group stopped", fmt.Sprintf("Group interval timer STOPPED, group: %s (id: %d)", group.Name, group.ID))
+			logger.Log("info", "OPC group stopped", fmt.Sprintf("Group interval timer STOPPED, group: %s", group.Name))
+			logger.NotifySubscribers("group.stopped", group)
 			break
 		}
 
@@ -107,7 +123,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 				proxy.DataChan <- data
 				b = 0
 				msg.Sequence++
-				NotifySubscribers("info.data", fmt.Sprintf("Sent data over UDP to '%s', sequence: %d\n", proxy.DataCon.RemoteAddr().String(), msg.Sequence-1))
+				logger.NotifySubscribers("info.data", fmt.Sprintf("Sent data over UDP to '%s', sequence: %d\n", proxy.DataCon.RemoteAddr().String(), msg.Sequence-1))
 				cacheMessage(msg)
 			} else {
 				b++
@@ -119,7 +135,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 		group.Counter = group.Counter + uint(len(items))
 
 		db.DB.Model(&group).Updates(types.OPCGroup{LastRun: group.LastRun, Counter: group.Counter})
-		NotifySubscribers("data.group", group)
+		logger.NotifySubscribers("data.group", group)
 
 		<-timer.C
 	}
@@ -183,7 +199,7 @@ func Start(group *types.OPCGroup) (err error) {
 	// Make sure the group is not already running
 	if group.Status != types.GroupStatusNotRunning {
 		err = fmt.Errorf("Group already running, group: %s (id: %d)", group.Name, group.ID)
-		db.Log("error", "OPC collection start failed", err.Error())
+		logger.Log("error", "OPC collection start failed", err.Error())
 		return
 	}
 
@@ -191,7 +207,7 @@ func Start(group *types.OPCGroup) (err error) {
 	db.DB.Table("opc_tags").Find(&tags, "group_id = ?", group.ID)
 	if len(tags) <= 0 {
 		err = fmt.Errorf("Group does not have any tags defined, group: %s (id: %d)", group.Name, group.ID)
-		db.Log("error", "OPC collection start failed", err.Error())
+		logger.Log("error", "OPC collection start failed", err.Error())
 		return
 	}
 
@@ -204,7 +220,7 @@ func Stop(group *types.OPCGroup) (err error) {
 	// Make sure the group is running
 	if group.Status != types.GroupStatusRunning {
 		err = fmt.Errorf("Group not running, group: %s (id: %d)", group.Name, group.ID)
-		db.Log("error", "OPC collection stop failed", err.Error())
+		logger.Log("error", "OPC collection stop failed", err.Error())
 		return
 	}
 

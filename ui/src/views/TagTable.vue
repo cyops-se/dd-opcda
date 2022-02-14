@@ -143,7 +143,6 @@
 </template>
 
 <script>
-  import Vue from 'vue'
   import ApiService from '@/services/api.service'
   export default {
     name: 'TagTableView',
@@ -315,12 +314,14 @@
 
         for (var mi = 0; mi < records.length; mi++) {
           var record = records[mi]
-          var tagname = record[0]
+          var tagname = record[0].trim()
           var groupid = parseInt(record[1])
           var found = false
-          var group = undefined
-          
-          for ( var g = 0; g < this.groups.length; g++ ) {
+          var group
+
+          if (tagname === '') continue
+
+          for (var g = 0; g < this.groups.length; g++) {
             if (this.groups[g].ID === groupid) {
               group = this.groups[g]
               break
@@ -354,7 +355,12 @@
         // keep changed items in the table
         this.items = this.items.filter(item => (item?.changed === true || item?.new === true) || false)
 
-        this.saveDisabled = false
+        if (this.items.length === 0) {
+          this.$notification.error('No new or changed items identified')
+          this.update()
+        } else {
+          this.saveDisabled = false
+        }
       },
 
       saveChanges () {

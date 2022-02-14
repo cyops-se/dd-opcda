@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"dd-opcda/db"
+	"dd-opcda/logger"
 	"dd-opcda/types"
 	"fmt"
 	"log"
@@ -21,9 +21,9 @@ func initProxy(proxy *types.DiodeProxy) (err error) {
 	target := fmt.Sprintf("%s:%d", proxy.EndpointIP, proxy.DataPort)
 	proxy.DataCon, err = net.Dial("udp", target)
 	if proxy.DataCon == nil {
-		db.Log("error", "Failed to open data emitter", fmt.Sprintf("UDP data emitter to IP: %s could not be opened, error: %s", target, err.Error()))
+		logger.Log("error", "Failed to open data emitter", fmt.Sprintf("UDP data emitter to IP: %s could not be opened, error: %s", target, err.Error()))
 	} else {
-		db.Log("trace", "Setting up outgoing DATA", target)
+		logger.Log("trace", "Setting up outgoing DATA", target)
 		proxy.DataChan = make(chan []byte)
 		go sendJob(proxy.DataChan, proxy.DataCon)
 	}
@@ -32,9 +32,9 @@ func initProxy(proxy *types.DiodeProxy) (err error) {
 	target = fmt.Sprintf("%s:%d", proxy.EndpointIP, proxy.MetaPort)
 	proxy.MetaCon, err = net.Dial("udp", target)
 	if proxy.MetaCon == nil {
-		db.Log("error", "Failed to open meta emitter", fmt.Sprintf("UDP meta emitter to IP: %s could not be opened, error: %s", target, err.Error()))
+		logger.Log("error", "Failed to open meta emitter", fmt.Sprintf("UDP meta emitter to IP: %s could not be opened, error: %s", target, err.Error()))
 	} else {
-		db.Log("trace", "Setting up outgoing META", target)
+		logger.Log("trace", "Setting up outgoing META", target)
 		proxy.MetaChan = make(chan []byte)
 		go sendJob(proxy.MetaChan, proxy.MetaCon)
 	}
@@ -43,9 +43,9 @@ func initProxy(proxy *types.DiodeProxy) (err error) {
 	target = fmt.Sprintf("%s:%d", proxy.EndpointIP, proxy.FilePort)
 	proxy.FileCon, err = net.Dial("udp", target)
 	if proxy.FileCon == nil {
-		db.Log("error", "Failed to open file emitter", fmt.Sprintf("UDP file emitter to IP: %s could not be opened, error: %s", target, err.Error()))
+		logger.Log("error", "Failed to open file emitter", fmt.Sprintf("UDP file emitter to IP: %s could not be opened, error: %s", target, err.Error()))
 	} else {
-		db.Log("trace", "Setting up outgoing FILE", target)
+		logger.Log("trace", "Setting up outgoing FILE", target)
 		proxy.MetaChan = make(chan []byte)
 		go sendJob(proxy.FileChan, proxy.FileCon)
 	}

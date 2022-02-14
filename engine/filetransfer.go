@@ -2,7 +2,7 @@ package engine
 
 import (
 	"crypto/sha256"
-	"dd-opcda/db"
+	"dd-opcda/logger"
 	"dd-opcda/types"
 	"encoding/binary"
 	"fmt"
@@ -47,7 +47,7 @@ func InitFileTransfer() error {
 		return nil
 	}
 
-	return db.Error("file transfer disabled", "No proxy defined. At least one proxy must be defined")
+	return logger.Error("file transfer disabled", "No proxy defined. At least one proxy must be defined")
 }
 
 func initContext(m int, d int) *context {
@@ -80,7 +80,7 @@ func processDirectory(ctx *context, dirname string) {
 			if err := os.Rename(filename, movename); err == nil {
 				// log.Printf("Requested processing of file: %s (%s)", filename, movename)
 				info := &types.FileInfo{Name: fi.Name(), Path: dirname, Size: int(fi.Size()), Date: fi.ModTime()}
-				NotifySubscribers("filetransfer.request", info)
+				logger.NotifySubscribers("filetransfer.request", info)
 				sendFile(ctx, info) // Do it sequentially to minimize packet loss
 			} else {
 				// log.Printf("Failed to move file to processing area: %s, error %s", filename, err.Error())
@@ -149,7 +149,7 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 			percent := float64(total) / float64(info.Size) * 100.0
 			// log.Printf("Progress %.2f (%d / %d)", percent, total, info.Size)
 			progress := &types.FileProgress{File: info, TotalSent: total, PercentDone: percent}
-			NotifySubscribers("filetransfer.progress", progress)
+			logger.NotifySubscribers("filetransfer.progress", progress)
 		}
 
 		if counter%uint32(ctx.modulus) == 0 {
@@ -166,13 +166,13 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 	movename := path.Join(todir, name)
 	if err = os.Rename(filename, movename); err == nil {
 		// log.Printf("Done processing file: %s (%s)", filename, movename)
-		db.Trace("File transfer complete", "File %s, size %d transferred as requested by operator", filename, info.Size)
+		logger.Trace("File transfer complete", "File %s, size %d transferred as requested by operator", filename, info.Size)
 	} else {
-		db.Error("Failed to move file", "Error when attempting to move file after file was transferred, file %s, size %d, error %s", filename, info.Size, err.Error())
+		logger.Error("Failed to move file", "Error when attempting to move file after file was transferred, file %s, size %d, error %s", filename, info.Size, err.Error())
 		// log.Printf("Failed to move file after processing: %s", err.Error())
 	}
 
-	NotifySubscribers("filetransfer.complete", info)
+	logger.NotifySubscribers("filetransfer.complete", info)
 
 	time.Sleep(time.Millisecond)
 
