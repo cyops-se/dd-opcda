@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	GroupStatusNotRunning = iota
-	GroupStatusRunning    = iota
+	GroupStatusNotRunning         = iota
+	GroupStatusRunning            = iota
+	GroupStatusRunningWithWarning = iota
 )
 
 type OPCGroup struct {
@@ -16,7 +17,7 @@ type OPCGroup struct {
 	Name         string     `json:"name"`
 	Description  string     `json:"description"`
 	Interval     int        `json:"interval"` // Sampling interval in seconds
-	Status       int        `json:"status"`
+	Status       int        `json:"status"`   // 0 = stopped, 1 = running, 2 = running with warning
 	LastRun      time.Time  `json:"lastrun"`
 	Counter      uint       `json:"counter"`
 	RunAtStart   bool       `json:"runatstart"`

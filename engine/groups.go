@@ -94,11 +94,17 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 	msg.Points = make([]types.DataPoint, msg.Count)
 
 	// Initiate group running state
-	group.Counter = 0
-	group.Status = types.GroupStatusRunning
-	db.DB.Save(group)
 
-	logger.NotifySubscribers("group.started", group)
+	if len(client.Tags()) != len(tags) {
+		group.Status = types.GroupStatusRunningWithWarning
+		logger.NotifySubscribers("group.warning", group)
+	} else {
+		group.Status = types.GroupStatusRunning
+		logger.NotifySubscribers("group.started", group)
+	}
+
+	group.Counter = 0
+	db.DB.Save(group)
 
 	var i, b int // golang always initialize to 0
 	for {
@@ -218,7 +224,7 @@ func Start(group *types.OPCGroup) (err error) {
 
 func Stop(group *types.OPCGroup) (err error) {
 	// Make sure the group is running
-	if group.Status != types.GroupStatusRunning {
+	if group.Status != types.GroupStatusRunning && group.Status != types.GroupStatusRunningWithWarning {
 		err = fmt.Errorf("Group not running, group: %s (id: %d)", group.Name, group.ID)
 		logger.Log("error", "OPC collection stop failed", err.Error())
 		return

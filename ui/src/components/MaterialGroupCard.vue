@@ -5,7 +5,7 @@
   >
     <v-card-title class="align-start">
       <v-sheet
-        :color="copy.status === 1 ? 'success' : 'error'"
+        :color="color"
         width="100%"
         class="overflow-hidden mt-n9 transition-swing v-card--material__sheet d-flex justify-center"
         justify="center"
@@ -24,14 +24,14 @@
             {{ copy.name }}
           </span>
           <span class="text-h4 text-no-wrap">
-            {{ copy.status == 1 ? 'RUNNING' : 'STOPPED' }}
+            {{ copy.status >= 1 ? 'RUNNING' : 'STOPPED' }}
           </span>
           <div>Send count: {{ copy.counter }}</div>
         </div>
         <v-spacer />
         <div class="my-auto mr-3">
           <v-btn @click="startStop">
-            <div v-html="copy.status == 1 ? 'STOP' : 'START'" />
+            <div v-html="copy.status >= 1 ? 'STOP' : 'START'" />
           </v-btn>
         </div>
       </v-sheet>
@@ -87,6 +87,7 @@
     },
 
     data: () => ({
+      color: 'error',
       copy: {},
     }),
 
@@ -98,26 +99,30 @@
 
     created () {
       this.copy = Object.assign({}, this.group)
-      var t = this
-      WebsocketService.topic('data.group', this, function (topic, group) {
-        if (t.copy.ID === group.ID) t.copy = group
+      this.color = this.group.status === 0 ? 'error' : this.group.status === 1 ? 'success' : 'warning'
+      WebsocketService.topic('data.group', this, function (topic, group, target) {
+        if (target.copy.ID === group.ID) target.updateGroup(target, group)
       })
-      WebsocketService.topic('group.failed', this, function (topic, group) {
-        if (t.copy.ID === group.ID) {
-          t.$notification.error('Failed to start group, please read logs')
-          t.copy.status = 0
+      WebsocketService.topic('group.failed', this, function (topic, group, target) {
+        if (target.copy.ID === group.ID) target.updateGroup(target, group)
+      })
+      WebsocketService.topic('group.started', this, function (topic, group, target) {
+        if (target.copy.ID === group.ID) {
+          target.updateGroup(target, group)
+          target.$notification.success('Group started')
         }
       })
-      WebsocketService.topic('group.started', this, function (topic, group) {
-        if (t.copy.ID === group.ID) {
-          t.$notification.success('Collection of group tags started')
-          t.copy.status = 1
+      WebsocketService.topic('group.stopped', this, function (topic, group, target) {
+        if (target.copy.ID === group.ID) {
+          group.status = 0
+          target.updateGroup(target, group)
+          target.$notification.success('Group stopped')
         }
       })
-      WebsocketService.topic('group.stopped', this, function (topic, group) {
-        if (t.copy.ID === group.ID) {
-          t.$notification.success('Collection of group tags stopped')
-          t.copy.status = 0
+      WebsocketService.topic('group.warning', this, function (topic, group, target) {
+        if (target.copy.ID === group.ID) {
+          target.updateGroup(target, group)
+          target.$notification.warning('Partial start of group, see logs')
         }
       })
     },
@@ -128,8 +133,9 @@
         ApiService.get('opc/group/' + action + '/' + this.group.ID)
           .then(response => {
           }).catch(response => {
-            console.log('ERROR response: ' + response.message)
-            this.$notification.error('Failed to start collection of group tags: ' + response.message)
+            this.$notification.error('Failed to start group')
+            // console.log('ERROR response: ' + response.message)
+            // this.$notification.error('Failed to start collection of group tags: ' + response.message)
           })
       },
 
@@ -140,6 +146,14 @@
           }).catch(response => {
             console.log('ERROR response (refresh): ' + response.message)
           })
+      },
+
+      updateGroup (target, group) {
+        if (target.copy.ID === group.ID) {
+          target.copy.status = group.status
+          target.color = group.status === 0 ? 'error' : group.status === 1 ? 'success' : 'warning'
+          target.copy = group
+        }
       },
     },
   }

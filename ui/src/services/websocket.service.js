@@ -9,11 +9,11 @@ const WebsocketService = {
   /**
    * Set the default HTTP request headers
    */
-  connect: function () {
+  connect: function (onclose) {
     this.connection = new WebSocket(this.baseURL)
     this.connection.onmessage = this.onmessage
     this.connection.onopen = this.onopen
-    this.connection.onclose = this.onclose
+    this.connection.onclose = onclose || this.onclose
     this.connection.subscriptions = this.subscriptions
   },
 
@@ -48,7 +48,15 @@ const WebsocketService = {
 
   topic: function (name, target, callback) {
     if (!this.subscriptions[name]) this.subscriptions[name] = []
-    this.subscriptions[name].push({ target: target, callback: callback })
+    var alreadyexists = false
+    for (var i = 0; i < this.subscriptions[name].length; i++) {
+      if (this.subscriptions[name][i].callback === callback) {
+        alreadyexists = true
+        break
+      }
+    }
+
+    if (!alreadyexists) this.subscriptions[name].push({ target: target, callback: callback })
   },
 }
 
