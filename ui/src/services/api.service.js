@@ -27,7 +27,8 @@ const ApiService = {
   query (resource, params) {
     resource = 'api/' + resource
     return Vue.axios.get(resource, params).catch(error => {
-      throw new Error(`[KT] ApiService ${error}`)
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
     })
   },
 
@@ -41,7 +42,8 @@ const ApiService = {
     ApiService.setHeader()
     resource = 'api/' + resource
     return Vue.axios.get(`${resource}`).catch(error => {
-      throw new Error(`[KT] ApiService ${error}`)
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
     })
   },
 
@@ -54,7 +56,10 @@ const ApiService = {
   post (resource, params) {
     ApiService.setHeader()
     resource = 'api/' + resource
-    return Vue.axios.post(`${resource}`, params)
+    return Vue.axios.post(`${resource}`, params).catch(error => {
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
+    })
   },
 
   /**
@@ -72,6 +77,9 @@ const ApiService = {
       headers: {
         'Content-Type': 'multipart/form-data; charset=utf-8',
       },
+    }).catch(error => {
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
     })
   },
 
@@ -85,7 +93,10 @@ const ApiService = {
   update (resource, slug, params) {
     ApiService.setHeader()
     resource = 'api/' + resource
-    return Vue.axios.put(`${resource}/${slug}`, params)
+    return Vue.axios.put(`${resource}/${slug}`, params).catch(error => {
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
+    })
   },
 
   /**
@@ -97,7 +108,10 @@ const ApiService = {
   put (resource, params) {
     ApiService.setHeader()
     resource = 'api/' + resource
-    return Vue.axios.put(`${resource}`, params)
+    return Vue.axios.put(`${resource}`, params).catch(error => {
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
+    })
   },
 
   /**
@@ -108,7 +122,10 @@ const ApiService = {
   delete (resource) {
     ApiService.setHeader()
     resource = 'api/' + resource
-    return Vue.axios.delete(resource)
+    return Vue.axios.delete(resource).catch(error => {
+      if (error.response.status === 401) JwtService.destroyToken()
+      throw error
+    })
     // .catch(error => {
     //   throw new Error(`[RWV] ApiService ${error}`)
     // })

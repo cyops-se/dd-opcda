@@ -3,7 +3,7 @@ module dd-opcda
 go 1.16
 
 require (
-	github.com/cyops-se/opc v0.3.6
+	github.com/cyops-se/opc v0.3.7
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/go-ole/go-ole v1.2.4
 	github.com/gofiber/fiber/v2 v2.18.0
