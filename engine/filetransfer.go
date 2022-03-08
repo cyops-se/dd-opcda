@@ -35,14 +35,13 @@ type context struct {
 
 var proxy *types.DiodeProxy
 
-func InitFileTransfer() error {
+func InitFileTransfer(gctx types.Context) error {
 	m, _ := strconv.Atoi(InitSetting("filetransfer.modulus", "20", "Number of packets to send before quick pause").Value)
 	d, _ := strconv.Atoi(InitSetting("filetransfer.msdelay", "20", "Number of milliseconds to pause before start sending again").Value)
 
 	proxy = FirstProxy()
 	if proxy != nil {
-		ctx := initContext(m, d)
-		log.Println("SENDER")
+		ctx := initContext(m, d, gctx)
 		go monitorFilesystem(ctx)
 		return nil
 	}
@@ -50,8 +49,8 @@ func InitFileTransfer() error {
 	return logger.Error("file transfer disabled", "No proxy defined. At least one proxy must be defined")
 }
 
-func initContext(m int, d int) *context {
-	ctx := &context{basedir: "outgoing", newdir: "new", processingdir: "processing", donedir: "done", modulus: m, msdelay: d}
+func initContext(m int, d int, gctx types.Context) *context {
+	ctx := &context{basedir: path.Join(gctx.Wdir, "outgoing"), newdir: "new", processingdir: "processing", donedir: "done", modulus: m, msdelay: d}
 	os.MkdirAll(path.Join(ctx.basedir, ctx.newdir), 0755)
 	os.MkdirAll(path.Join(ctx.basedir, ctx.processingdir), 0755)
 	os.MkdirAll(path.Join(ctx.basedir, ctx.donedir), 0755)
@@ -121,7 +120,7 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 	}
 
 	hash := calcHash(filename)
-	header := fmt.Sprintf("DD-FILETRANSFER  %s %s %d %x", name, dir, info.Size, hash.Sum(nil)) // :filename:directory:size:hash:
+	header := fmt.Sprintf("DD-FILETRANSFER BEGIN v2 %s %s %d %x", name, dir, info.Size, hash.Sum(nil)) // :filename:directory:size:hash:
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -129,19 +128,22 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 		return err
 	}
 
-	content := make([]byte, 1400)
+	// Always send packets of 1200 bytes, regardless
+	content := make([]byte, 1200)
 	n := 0
-
-	// Send header in single packet
-	c.Write([]byte(header))
-	time.Sleep(time.Millisecond)
+	binhead := []byte(header)
+	copy(content, binhead)
+	c.Write(content)
 
 	total := 0
 	counter := uint32(0)
 	for err == nil {
+		// each message starts with a 4 byte sequence number, then 4 bytes of size of payload, then payload
+		n, err = file.Read(content[8:])
 		binary.LittleEndian.PutUint32(content, counter)
-		n, err = file.Read(content[4:])
-		sn, _ := c.Write(content[:n+4])
+		binary.LittleEndian.PutUint32(content[4:], uint32(n))
+		// sn, _ := c.Write(content[:n+8])
+		sn, _ := c.Write(content) // Always write full buffer
 		total += sn
 		counter++
 
@@ -156,6 +158,12 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 			time.Sleep(time.Millisecond * time.Duration(ctx.msdelay))
 		}
 	}
+
+	footer := []byte("DD-FILETRANSFER END v2")
+	content = make([]byte, 1200)
+	binfoot := []byte(footer)
+	copy(content, binfoot)
+	c.Write(content)
 
 	c.Close()
 	file.Close()

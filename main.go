@@ -4,6 +4,7 @@ import (
 	"dd-opcda/db"
 	"dd-opcda/engine"
 	"dd-opcda/routes"
+	"dd-opcda/types"
 	"dd-opcda/web"
 	"flag"
 	"fmt"
@@ -33,13 +34,7 @@ type Config struct {
 	Tags []ConfigTagEntry `json:"tags"`
 }
 
-type Context struct {
-	cmd     string
-	trace   bool
-	version bool
-}
-
-var ctx Context
+var ctx types.Context
 var GitVersion string
 var GitCommit string
 
@@ -47,27 +42,28 @@ func main() {
 	defer handlePanic()
 
 	svcName := "dd-opcda"
-	flag.StringVar(&ctx.cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
-	flag.BoolVar(&ctx.trace, "trace", false, "Prints traces of OCP data to the console")
-	flag.BoolVar(&ctx.version, "v", false, "Prints the commit hash and exits")
+	flag.StringVar(&ctx.Cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
+	flag.StringVar(&ctx.Wdir, "workdir", ".", "Sets the working directory for the process")
+	flag.BoolVar(&ctx.Trace, "trace", false, "Prints traces of OCP data to the console")
+	flag.BoolVar(&ctx.Version, "v", false, "Prints the commit hash and exits")
 	flag.Parse()
 
 	routes.SysInfo.GitVersion = GitVersion
 	routes.SysInfo.GitCommit = GitCommit
 
-	if ctx.version {
+	if ctx.Version {
 		fmt.Printf("dd-opcda version %s, commit: %s\n", routes.SysInfo.GitVersion, routes.SysInfo.GitCommit)
 		return
 	}
 
-	if ctx.cmd == "install" {
+	if ctx.Cmd == "install" {
 		if err := installService(svcName, "dd-opcda from cyops-se"); err != nil {
-			log.Fatalf("failed to %s %s: %v", ctx.cmd, svcName, err)
+			log.Fatalf("failed to %s %s: %v", ctx.Cmd, svcName, err)
 		}
 		return
-	} else if ctx.cmd == "remove" {
+	} else if ctx.Cmd == "remove" {
 		if err := removeService(svcName); err != nil {
-			log.Fatalf("failed to %s %s: %v", ctx.cmd, svcName, err)
+			log.Fatalf("failed to %s %s: %v", ctx.Cmd, svcName, err)
 		}
 		return
 	}
@@ -89,10 +85,10 @@ func main() {
 func runEngine() {
 	defer handlePanic()
 
-	db.ConnectDatabase()
+	db.ConnectDatabase(ctx)
 	engine.InitGroups()
 	engine.InitServers()
 	engine.InitCache()
-	engine.InitFileTransfer()
+	engine.InitFileTransfer(ctx)
 	go web.RunWeb()
 }

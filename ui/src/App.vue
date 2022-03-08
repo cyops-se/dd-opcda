@@ -40,6 +40,7 @@
 
     methods: {
       onclose () {
+        console.log('Websocket closed')
         WebsocketService.connect(this.onclose)
       },
     },

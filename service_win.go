@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -55,16 +56,19 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	os.MkdirAll("/cyops/logs", 0755)
-	if !ctx.trace {
-		reportInfo("Logs are now redirected to '/cyops/logs/dd-opcda.*'")
-		if stdout, err := os.OpenFile("/cyops/logs/dd-opcda.out.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
-			reportError("Failed to open '/cyops/logs/dd-opcda.out.log', error; %s", err.Error())
+	logdir := path.Join(ctx.Wdir, "logs")
+	outfile := path.Join(logdir, "dd-opcda.out.log")
+	errfile := path.Join(logdir, "dd-opcda.err.log")
+	os.MkdirAll(logdir, 0755)
+	if !ctx.Trace {
+		reportInfo("Logs are now redirected to '%s/dd-opcda.*'", logdir)
+		if stdout, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '%s', error; %s", outfile, err.Error())
 		} else {
 			os.Stdout = stdout
 		}
-		if stderr, err := os.OpenFile("/cyops/logs/dd-opcda.err.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
-			reportError("Failed to open '/cyops/logs/dd-opcda.err.log', error; %s", err.Error())
+		if stderr, err := os.OpenFile(errfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+			reportError("Failed to open '%s', error; %s", errfile, err.Error())
 		} else {
 			os.Stderr = stderr
 		}

@@ -100,10 +100,10 @@ func ResendCacheItems(items []CacheItem) int {
 
 func SendFullCache() error {
 	// Just copy the files to the outgoing file transfer directory
-	return copy("cache", "outgoing/new")
+	return copyDir("cache", "outgoing/new")
 }
 
-func copy(source, destination string) error {
+func copyDir(source, destination string) error {
 	var err error = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		var relPath string = strings.Replace(path, source, "", 1)
 		if relPath == "" {
