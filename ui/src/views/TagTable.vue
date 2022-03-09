@@ -143,7 +143,9 @@
 </template>
 
 <script>
+  import Vue from 'vue'
   import ApiService from '@/services/api.service'
+  import WebsocketService from '@/services/websocket.service'
   export default {
     name: 'TagTableView',
 
@@ -164,6 +166,7 @@
         },
         { text: 'Name', value: 'name', width: '60%' },
         { text: 'Group', value: 'group.name', width: '20%' },
+        { text: 'Value', value: 'value', width: '10%' },
         { text: 'Changed', value: 'changed', width: '10%' },
         { text: 'New', value: 'new', width: '10%' },
         { text: 'Actions', value: 'actions', width: 1, sortable: false },
@@ -185,6 +188,15 @@
 
     created () {
       this.update()
+      WebsocketService.topic('data.message', this, function (topic, message, t) {
+        // console.log(JSON.stringify(message))
+        var msg = JSON.parse(message)
+        for (var i = 0; i < msg.points.length; i++) {
+          var p = msg.points[i]
+          var item = t.items.find(i => i.name === p.n)
+          if (item) Vue.set(item, 'value', p.v)
+        }
+      })
     },
 
     methods: {
@@ -240,7 +252,6 @@
           Object.assign(this.items[this.editedIndex], this.editedItem)
           ApiService.put('data/opc_tags', this.editedItem)
             .then(response => {
-              // this.$notification.success('Tag ' + response.data.fullname + ' successfully updated!')
             }).catch(response => {
               this.$notification.error('Failed to update tag!' + response)
             })
@@ -248,7 +259,6 @@
           this.items.push(this.editedItem)
           ApiService.post('data/opc_tags', this.editedItem)
             .then(response => {
-              // this.successMessage('Tag ' + response.data.fullname + ' successfully added!')
             }).catch(response => {
               this.failureMessage('Failed to add tag!' + response)
             })
@@ -258,13 +268,6 @@
 
       exportCSV () {
         let csvContent = 'data:text/csv;charset=utf-8,'
-        // csvContent += [
-        //   Object.keys(this.items[0]).join(';'),
-        //   ...this.items.map(item => Object.values(item).join(';')),
-        // ]
-        //   .join('\n')
-        //   .replace(/(^\[)|(\]$)/gm, '')
-
         csvContent += [
           'name;groupid;',
           ...this.items.map(item => item.name + ';' + item.groupid + ';'),

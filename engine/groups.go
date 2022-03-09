@@ -125,12 +125,13 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 			// Send batch when msg.Points is full (keep it small to avoid fragmentation)
 			if b == len(msg.Points)-1 {
 				data, _ := json.Marshal(msg)
-				proxy := FirstProxy() // proxies[group.DiodeProxyID]
-				proxy.DataChan <- data
-				b = 0
-				msg.Sequence++
-				logger.NotifySubscribers("info.data", fmt.Sprintf("Sent data over UDP to '%s', sequence: %d\n", proxy.DataCon.RemoteAddr().String(), msg.Sequence-1))
-				cacheMessage(msg)
+				if proxy := FirstProxy(); proxy != nil {
+					proxy.DataChan <- data
+					b = 0
+					msg.Sequence++
+					logger.NotifySubscribers("data.message", string(data))
+					cacheMessage(msg)
+				}
 			} else {
 				b++
 			}
