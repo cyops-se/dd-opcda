@@ -6,7 +6,6 @@ import (
 	"dd-opcda/types"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -17,13 +16,14 @@ import (
 var opcmutex sync.Mutex // Issue #3, no time to find out where thread insafety is (looks like it's in or below oleutil)
 
 func metaSender(diodeProxy *types.DiodeProxy) {
+	defer handlePanic("metaSender")
 	address := fmt.Sprintf("%s:%d", diodeProxy.EndpointIP, diodeProxy.MetaPort)
 
 	logger.Log("trace", "Setting up outgoing META", address)
 
 	con, err := net.Dial("udp", address)
 	if con == nil {
-		logger.Log("error", "Failed to open emitter", fmt.Sprintf("UDP emitter to IP: %s could not be opened, error: %s", address, err.Error()))
+		logger.Error("Groups engine", "UDP emitter to IP: %s could not be opened, error: %s", address, err.Error())
 		return
 	}
 
@@ -37,7 +37,7 @@ func metaSender(diodeProxy *types.DiodeProxy) {
 			}
 			msg, _ := json.Marshal(tags[i : i+batchsize])
 			if _, err := con.Write(msg); err != nil {
-				log.Println("Failed to send meta data:", err.Error())
+				logger.Error("Groups engine", "Failed to send meta data: %s", err.Error())
 			} else {
 				// log.Println("Sending meta data ... ", len(tags), n)
 			}
@@ -48,18 +48,15 @@ func metaSender(diodeProxy *types.DiodeProxy) {
 }
 
 func read(client *opc.Connection) map[string]opc.Item {
+	defer handlePanic("read")
 	opcmutex.Lock()
 	defer opcmutex.Unlock()
 	return (*client).Read()
 }
 
 func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
+	defer handlePanic("groupDataCollector")
 	timer := time.NewTicker(time.Duration(group.Interval) * time.Second)
-
-	// tagnames := make([]string, len(tags))
-	// for i, tag := range tags {
-	// 	tagnames[i] = tag.Name
-	// }
 
 	client, err := opc.NewConnectionWithoutTags(group.ProgID, // ProgId
 		[]string{"localhost"}, //  OPC servers nodes
@@ -76,7 +73,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 	// Adding items
 	for _, tag := range tags {
 		if err := client.AddSingle(tag.Name); err != nil {
-			logger.Log("error", "Unable to collect tag", fmt.Sprintf("%s, group: %s, progid: %s", tag.Name, group.Name, group.ProgID))
+			logger.Log("warning", "Unable to collect tag", fmt.Sprintf("%s, group: %s, progid: %s", tag.Name, group.Name, group.ProgID))
 		}
 	}
 
@@ -149,6 +146,7 @@ func groupDataCollector(group *types.OPCGroup, tags []*types.OPCTag) {
 }
 
 func InitGroups() {
+	defer handlePanic("InitGroups")
 	InitSetting("tagpathdelimiter", ".", "Delimiter in OPC DA tag paths. Differs between OPC DA servers")
 
 	items, _ := GetGroups()
@@ -170,12 +168,14 @@ func InitGroups() {
 }
 
 func GetGroups() ([]*types.OPCGroup, error) {
+	defer handlePanic("GetGroups")
 	var items []*types.OPCGroup
 	db.DB.Table("opc_groups").Order("id").Preload("DiodeProxy").Find(&items)
 	return items, nil
 }
 
 func GetGroup(id uint) (*types.OPCGroup, error) {
+	defer handlePanic("GetGroup")
 	var item types.OPCGroup
 	if err := db.DB.Table("opc_groups").Preload("DiodeProxy").Take(&item, id).Error; err != nil {
 		return nil, err
@@ -185,6 +185,7 @@ func GetGroup(id uint) (*types.OPCGroup, error) {
 }
 
 func GetDefaultGroup() (*types.OPCGroup, error) {
+	defer handlePanic("GetDefaultGroup")
 	var item types.OPCGroup
 	if err := db.DB.Table("opc_groups").Preload("DiodeProxy").First(&item, "default_group = true").Error; err != nil {
 		return nil, err
@@ -194,6 +195,7 @@ func GetDefaultGroup() (*types.OPCGroup, error) {
 }
 
 func GetGroupTags(id uint) ([]*types.OPCTag, error) {
+	defer handlePanic("GetGroupTags")
 	var items []*types.OPCTag
 	if err := db.DB.Table("opc_tags").Find(&items, "groupid = ?", id).Error; err != nil {
 		return nil, err
@@ -203,6 +205,7 @@ func GetGroupTags(id uint) ([]*types.OPCTag, error) {
 }
 
 func Start(group *types.OPCGroup) (err error) {
+	defer handlePanic("Start")
 	// Make sure the group is not already running
 	if group.Status != types.GroupStatusNotRunning {
 		err = fmt.Errorf("Group already running, group: %s (id: %d)", group.Name, group.ID)
@@ -224,6 +227,7 @@ func Start(group *types.OPCGroup) (err error) {
 }
 
 func Stop(group *types.OPCGroup) (err error) {
+	defer handlePanic("Stop")
 	// Make sure the group is running
 	if group.Status != types.GroupStatusRunning && group.Status != types.GroupStatusRunningWithWarning {
 		err = fmt.Errorf("Group not running, group: %s (id: %d)", group.Name, group.ID)
@@ -239,6 +243,7 @@ func Stop(group *types.OPCGroup) (err error) {
 }
 
 func GetTagNames() ([]string, error) {
+	defer handlePanic("GetTagNames")
 	var items []string
 	if err := db.DB.Table("opc_tags").Where("deleted_at is null").Pluck("Name", &items).Error; err != nil {
 		return nil, err
@@ -248,6 +253,7 @@ func GetTagNames() ([]string, error) {
 }
 
 func GetTagInfos() (items []*types.TagsInfos, err error) {
+	defer handlePanic("GetTagInfos")
 	if err = db.DB.Table("opc_tags").Where("deleted_at is null").Find(&items).Error; err != nil {
 		return nil, err
 	}

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -82,7 +81,7 @@ func ResendCacheItems(items []CacheItem) int {
 
 	count := 0
 	if proxy == nil {
-		log.Printf("No proxy defined")
+		logger.Trace("Cache error", "No proxy defined")
 		return 0
 	}
 
@@ -120,7 +119,7 @@ func copyDir(source, destination string) error {
 		}
 	})
 	if err != nil {
-		log.Println("copy command failed: ", err.Error())
+		logger.Error("Cache", "copy command failed: %s", err.Error())
 	}
 	return err
 }
@@ -133,7 +132,7 @@ func copyFile(src, dst string) (err error) {
 	defer in.Close()
 
 	dir := path.Dir(strings.ReplaceAll(dst, "\\", "/"))
-	log.Printf("Creating directory %s", dir)
+	logger.Trace("Cache", "Creating directory %s", dir)
 	os.MkdirAll(dir, 0755)
 	out, err := os.Create(dst)
 	if err != nil {
@@ -156,33 +155,8 @@ func resendCacheItem(item CacheItem, proxy *types.DiodeProxy) int {
 	// First put it on the file transfer directory
 	newFilename := path.Join("outgoing", "new", item.Filename)
 	if err := copyFile(item.Filename, newFilename); err != nil {
-		log.Printf("Failed to copy file %s to %s, error: %s", item.Filename, newFilename, err.Error())
+		logger.Error("Cache", "Failed to copy file %s to %s, error: %s", item.Filename, newFilename, err.Error())
 	}
-	/*
-		// Secondly, read it and send each message again
-		file, _ = os.OpenFile(item.Filename, os.O_RDONLY, 0644)
-		gzr, _ := gzip.NewReader(file)
-		fr := bufio.NewReader(gzr)
-
-		count := 0
-		data, _ := ioutil.ReadAll(fr)
-		var msgs []types.DataMessage
-		if err := json.Unmarshal(data, &msgs); err == nil {
-			for _, msg := range msgs {
-				data, _ := json.Marshal(msg)
-				proxy.DataChan <- data
-				count++
-				time.Sleep(time.Millisecond)
-			}
-		} else {
-			log.Println("Failed to unmarshal to JSON, error:", err.Error())
-		}
-
-		gzr.Close()
-		file.Close()
-
-		return count
-	*/
 	return 1
 }
 
@@ -208,7 +182,7 @@ func refreshCache() {
 	cacheInfo.Items = nil
 	cacheInfo.Size = 0
 	if err := filepath.Walk("cache", indexer); err != nil {
-		log.Println("FILEWALK ERROR:", err.Error())
+		logger.Error("Cache", "Filewak error: %s", err.Error())
 	}
 	cacheInfo.Count = len(cacheInfo.Items)
 	cacheMutex.Unlock()

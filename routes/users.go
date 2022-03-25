@@ -5,7 +5,6 @@ import (
 	"dd-opcda/logger"
 	"dd-opcda/types"
 	"fmt"
-	"log"
 
 	"github.com/form3tech-oss/jwt-go"
 	"github.com/gofiber/fiber/v2"
@@ -43,8 +42,6 @@ func GetCurrentUser(c *fiber.Ctx) error {
 		logger.Log("error", "GetCurrentUser failed (first)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
-
-	log.Println("USER", user)
 
 	c.Status(200)
 	return c.JSON(user)

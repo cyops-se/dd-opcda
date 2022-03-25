@@ -3,6 +3,7 @@ package web
 import (
 	ddlog "dd-opcda/logger"
 	"dd-opcda/routes"
+	"dd-opcda/types"
 	"embed"
 	"io/fs"
 	"log"
@@ -24,12 +25,13 @@ var static embed.FS
 
 func handlePanic() {
 	if r := recover(); r != nil {
-		log.Println(r)
+		// ddlog.Error("RunWeb", "Panic, recovery: %#v", r)
+		log.Printf("Servers panic, recovery: %#v", r)
 		return
 	}
 }
 
-func RunWeb() {
+func RunWeb(args types.Context) {
 	defer handlePanic()
 
 	// http.FS can be used to create a http Filesystem
@@ -38,7 +40,9 @@ func RunWeb() {
 
 	// Set a file transfer limit to 50MB
 	app := fiber.New(fiber.Config{StrictRouting: true, BodyLimit: 50 * 1024 * 1024})
-	app.Use(logger.New())
+	if args.Trace {
+		app.Use(logger.New())
+	}
 
 	app.Use("/", filesystem.New(filesystem.Config{
 		Root:   staticFS,
@@ -63,7 +67,6 @@ func RunWeb() {
 		for c.Conn != nil {
 			time.Sleep(1)
 		}
-		log.Println("Dropping websocket connection")
 	}))
 
 	api := app.Group("/api")

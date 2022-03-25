@@ -17,11 +17,11 @@ func ConnectDatabase(ctx types.Context) {
 	// dsn := "user=dev password=hemligt dbname=dev host=localhost port=5432"
 	// database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Println("Failed to connect to database", err)
+		log.Printf("Failed to connect to database: %s", err.Error())
 		return
 	}
 
-	log.Println("Database connected!")
+	log.Printf("Database connected")
 
 	// The User model is special due to the 'password' field, and has
 	// user specific routes

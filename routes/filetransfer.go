@@ -3,7 +3,6 @@ package routes
 import (
 	"dd-opcda/engine"
 	"dd-opcda/logger"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -34,7 +33,7 @@ func UploadFilesToTransfer(c *fiber.Ctx) error {
 		return c.Status(503).SendString(err.Error())
 	}
 
-	log.Printf("FILE TRANSFER: received file from upload:", file.Filename)
+	logger.Trace("File transfer", "Received file from upload: %s", file.Filename)
 
 	// Make sure file transfer outging exists
 	// TODO: use proper interface to filetransfer for this (now hardcoded to ./outgoing/new)

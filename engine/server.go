@@ -19,9 +19,10 @@ type Server struct {
 var servers []*Server
 var mutex sync.Mutex
 
-func handlePanic() {
+func handlePanic(method string) {
 	if r := recover(); r != nil {
-		log.Println(r)
+		// logger.Error("Engine panic", "Panic in method '%s', recovery: %#v", method, r)
+		log.Printf("Engine panic, method: %s, recovery: %#v", method, r)
 		return
 	}
 }
@@ -35,7 +36,7 @@ func Unlock() {
 }
 
 func InitServers() {
-	defer handlePanic()
+	defer handlePanic("InitServers")
 
 	i := 0
 	if ao := opc.NewAutomationObject(); ao != nil {
@@ -52,10 +53,12 @@ func InitServers() {
 }
 
 func GetServers() []*Server {
+	defer handlePanic("GetServers")
 	return servers
 }
 
 func GetServer(sid int) (*Server, error) {
+	defer handlePanic("GetServer")
 	if sid < 0 || sid >= len(servers) {
 		return nil, fmt.Errorf("no such server id: %d", sid)
 	}
@@ -64,17 +67,18 @@ func GetServer(sid int) (*Server, error) {
 }
 
 func GetBrowser(sid int) (*ole.VARIANT, error) {
+	defer handlePanic("GetBrowser")
 	server, err := GetServer(sid)
 	if err != nil {
-		log.Println(err)
+		logger.Error("Servers engine", "Failed to get server '%s', error: %s", sid, err)
 		return nil, err
 	}
 
 	if server.Cursor == nil {
 		mutex.Lock()
-		server.Cursor, _ = opc.CreateBrowserCursor(server.ProgID, []string{"localhost"})
+		server.Cursor, err = opc.CreateBrowserCursor(server.ProgID, []string{"localhost"})
 		mutex.Unlock()
 	}
 
-	return server.Cursor, nil
+	return server.Cursor, err
 }

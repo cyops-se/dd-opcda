@@ -41,9 +41,10 @@ func RegisterOPCRoutes(api fiber.Router) {
 	api.Post("/opc/tag/changes", PostTagChanges)
 }
 
-func handlePanic(c *fiber.Ctx) {
+func handlePanic(c *fiber.Ctx, method string) {
 	if r := recover(); r != nil {
-		log.Println(r)
+		// logger.Error("OPC route panic", "Panic in '%s', recovery: %#v", method, r)
+		log.Printf("OPC route panic, method: %s, recovery: %#v", method, r)
 		// engine.Unlock()
 		c.Status(500)
 		c.JSON(r)
@@ -56,10 +57,12 @@ func handleError(c *fiber.Ctx, err error) error {
 }
 
 func GetAllServers(c *fiber.Ctx) error {
+	defer handlePanic(c, "GetAllServers")
 	return c.Status(200).JSON(engine.GetServers())
 }
 
 func GetServerById(c *fiber.Ctx) error {
+	defer handlePanic(c, "GetServerById")
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	server, err := engine.GetServer(sid)
 	if err != nil {
@@ -70,6 +73,7 @@ func GetServerById(c *fiber.Ctx) error {
 }
 
 func GetServerRoot(c *fiber.Ctx) error {
+	defer handlePanic(c, "GetServerRoot")
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
@@ -94,6 +98,7 @@ func GetServerRoot(c *fiber.Ctx) error {
 }
 
 func GetServerPosition(c *fiber.Ctx) error {
+	defer handlePanic(c, "GetServerPosition")
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	browser, err := engine.GetBrowser(sid)
 	if err != nil {
@@ -111,7 +116,7 @@ func GetServerPosition(c *fiber.Ctx) error {
 }
 
 func GetServerBranches(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetServerBranches")
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	encodedbranch := c.Params("branch")
@@ -122,7 +127,7 @@ func GetServerBranches(c *fiber.Ctx) (err error) {
 
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
-		log.Println("Failed to decode branch", encodedbranch)
+		logger.Error("OPC route", "Failed to decode branch: %s", encodedbranch)
 		return handleError(c, err)
 	}
 
@@ -136,7 +141,7 @@ func GetServerBranches(c *fiber.Ctx) (err error) {
 }
 
 func GetServerLeaves(c *fiber.Ctx) error {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetServerLeaves")
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	encodedbranch := c.Params("branch")
@@ -147,7 +152,7 @@ func GetServerLeaves(c *fiber.Ctx) error {
 
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
-		log.Println("Failed to decode branch", encodedbranch)
+		logger.Error("File transfer", "Failed to decode branch: %s", encodedbranch)
 		return handleError(c, err)
 	}
 
@@ -161,7 +166,7 @@ func GetServerLeaves(c *fiber.Ctx) error {
 }
 
 func GetServerListBranches(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetServerListBranches")
 
 	sid, _ := strconv.Atoi(c.Params("serverid"))
 	encodedbranch := c.Params("branch")
@@ -172,7 +177,7 @@ func GetServerListBranches(c *fiber.Ctx) (err error) {
 
 	branch, err := url.QueryUnescape(encodedbranch)
 	if err != nil {
-		log.Println("Failed to decode branch", encodedbranch)
+		logger.Error("File transfer", "Failed to decode branch: %s", encodedbranch)
 		return handleError(c, err)
 	}
 
@@ -194,6 +199,7 @@ func GetServerListBranches(c *fiber.Ctx) (err error) {
 // GROUPS
 
 func GetGroups(c *fiber.Ctx) (err error) {
+	defer handlePanic(c, "GetGroups")
 	groups, _ := engine.GetGroups()
 
 	// make sure at least one group is the default group
@@ -214,20 +220,21 @@ func GetGroups(c *fiber.Ctx) (err error) {
 }
 
 func NewGroup(c *fiber.Ctx) (err error) {
+	defer handlePanic(c, "NewGroup")
 	var group types.OPCGroup
 	if err := c.BodyParser(&group); err != nil {
-		logger.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
+		logger.Log("error", "NewGroup failed (bind)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
 	if group.DefaultGroup {
 		if err := db.DB.Exec("update opc_groups set 'default_group' = false").Error; err != nil {
-			logger.Log("error", "UpdateGroup failed to reset default group flag", fmt.Sprintf("%v", err))
+			logger.Log("error", "NewGroup failed to reset default group flag", fmt.Sprintf("%v", err))
 		}
 	}
 
 	if err := db.DB.Save(&group).Error; err != nil {
-		logger.Log("error", "UpdateGroup failed (save)", fmt.Sprintf("%v", err))
+		logger.Log("error", "NewGroup failed (save)", fmt.Sprintf("%v", err))
 		return c.Status(503).SendString(err.Error())
 	}
 
@@ -236,6 +243,7 @@ func NewGroup(c *fiber.Ctx) (err error) {
 }
 
 func UpdateGroup(c *fiber.Ctx) (err error) {
+	defer handlePanic(c, "UpdateGroup")
 	var data types.OPCGroup
 	if err := c.BodyParser(&data); err != nil {
 		logger.Log("error", "UpdateGroup failed (bind)", fmt.Sprintf("%v", err))
@@ -271,7 +279,7 @@ func UpdateGroup(c *fiber.Ctx) (err error) {
 }
 
 func GetGroup(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetGroup")
 
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
@@ -283,7 +291,7 @@ func GetGroup(c *fiber.Ctx) (err error) {
 }
 
 func GetGroupTags(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetGroupTags")
 
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	tags, err := engine.GetGroupTags(uint(gid))
@@ -295,7 +303,7 @@ func GetGroupTags(c *fiber.Ctx) (err error) {
 }
 
 func GetGroupStart(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetGroupStart")
 
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
@@ -311,7 +319,7 @@ func GetGroupStart(c *fiber.Ctx) (err error) {
 }
 
 func GetGroupStop(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetGroupStop")
 
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
@@ -327,6 +335,7 @@ func GetGroupStop(c *fiber.Ctx) (err error) {
 }
 
 func PostGroupAddTag(c *fiber.Ctx) (err error) {
+	defer handlePanic(c, "PostGroupAddTag")
 	gid, _ := strconv.Atoi(c.Params("gid"))
 	group, err := engine.GetGroup(uint(gid))
 	if err != nil {
@@ -351,11 +360,12 @@ func PostGroupAddTag(c *fiber.Ctx) (err error) {
 }
 
 func PostGroupDelTag(c *fiber.Ctx) (err error) {
+	defer handlePanic(c, "PostGroupDelTag")
 	return nil
 }
 
 func GetTagNames(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "GetTagNames")
 
 	tags, err := engine.GetTagNames()
 	if err != nil {
@@ -366,7 +376,7 @@ func GetTagNames(c *fiber.Ctx) (err error) {
 }
 
 func PostTagNames(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "PostTagNames")
 
 	tagnames, err := engine.GetTagNames()
 	if err != nil {
@@ -408,7 +418,7 @@ func PostTagNames(c *fiber.Ctx) (err error) {
 }
 
 func DeleteTagNames(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "DeleteTagNames")
 
 	var items []string
 	if err = c.BodyParser(&items); err == nil {
@@ -421,7 +431,7 @@ func DeleteTagNames(c *fiber.Ctx) (err error) {
 }
 
 func PostTagChanges(c *fiber.Ctx) (err error) {
-	defer handlePanic(c)
+	defer handlePanic(c, "PostTagChanges")
 
 	tagnames, err := engine.GetTagNames()
 	if err != nil {

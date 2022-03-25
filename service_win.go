@@ -7,43 +7,34 @@
 package main
 
 import (
+	"dd-opcda/logger"
 	"fmt"
 	"log"
-	"os"
-	"path"
 	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
-	"golang.org/x/sys/windows/svc/eventlog"
 )
-
-var elog debug.Log
 
 type myservice struct{}
 
 func handlePanic() {
 	if r := recover(); r != nil {
-		elog.Error(1, fmt.Sprintf("recover: %#v", r))
+		// logger.Error("Windows service error", "Panic, recovery: %#v", r)
+		log.Printf("Windows server panic, recovery: %#v", r)
 		return
 	}
 }
 
 func reportError(f string, args ...interface{}) {
-	msg := fmt.Sprintf(f, args)
-	log.Println(msg)
-	if elog != nil {
-		elog.Error(1, msg)
-	}
+	msg := fmt.Sprintf(f, args...)
+	logger.Error("Windows service error", msg)
 }
 
 func reportInfo(f string, args ...interface{}) {
-	msg := fmt.Sprintf(f, args)
-	log.Println(msg)
-	if elog != nil {
-		elog.Info(1, msg)
-	}
+	msg := fmt.Sprintf(f, args...)
+	logger.Trace("Windows service info", msg)
 }
 
 func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
@@ -56,23 +47,23 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	logdir := path.Join(ctx.Wdir, "logs")
-	outfile := path.Join(logdir, "dd-opcda.out.log")
-	errfile := path.Join(logdir, "dd-opcda.err.log")
-	os.MkdirAll(logdir, 0755)
-	if !ctx.Trace {
-		reportInfo("Logs are now redirected to '%s/dd-opcda.*'", logdir)
-		if stdout, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
-			reportError("Failed to open '%s', error; %s", outfile, err.Error())
-		} else {
-			os.Stdout = stdout
-		}
-		if stderr, err := os.OpenFile(errfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
-			reportError("Failed to open '%s', error; %s", errfile, err.Error())
-		} else {
-			os.Stderr = stderr
-		}
-	}
+	// logdir := path.Join(ctx.Wdir, "logs")
+	// outfile := path.Join(logdir, "dd-opcda.out.log")
+	// errfile := path.Join(logdir, "dd-opcda.err.log")
+	// os.MkdirAll(logdir, 0755)
+	// if !ctx.Trace {
+	// 	reportInfo("Logs are now redirected to '%s/dd-opcda.*'", logdir)
+	// 	if stdout, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+	// 		reportError("Failed to open '%s', error; %s", outfile, err.Error())
+	// 	} else {
+	// 		os.Stdout = stdout
+	// 	}
+	// 	if stderr, err := os.OpenFile(errfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0755); err != nil {
+	// 		reportError("Failed to open '%s', error; %s", errfile, err.Error())
+	// 	} else {
+	// 		os.Stderr = stderr
+	// 	}
+	// }
 
 	reportInfo("starting engine")
 	go runEngine()
@@ -84,7 +75,6 @@ loop:
 		select {
 		case <-tick:
 			// beep()
-			// elog.Info(1, "beep")
 		case c := <-r:
 			switch c.Cmd {
 			case svc.Interrogate:
@@ -115,16 +105,6 @@ loop:
 
 func runService(name string, isDebug bool) {
 	var err error
-	if isDebug {
-		elog = debug.New(name)
-	} else {
-		elog, err = eventlog.Open(name)
-		if err != nil {
-			return
-		}
-	}
-	defer elog.Close()
-
 	reportInfo("starting %s service", name)
 	run := svc.Run
 	if isDebug {

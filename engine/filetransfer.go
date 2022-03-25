@@ -98,24 +98,24 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 
 	fi, err := os.Lstat(filename)
 	if err != nil {
-		log.Println("Cannot find file:", filename, err.Error())
+		logger.Error("Filetransfer", "Cannot find file: %s, error: %s", filename, err.Error())
 		return fmt.Errorf("file not found")
 	}
 
 	if fi.IsDir() {
-		log.Println("'filename' points to a directory, not a file:", filename)
+		logger.Error("Filetransfer", "'filename' points to a directory, not a file: %s", filename)
 		return fmt.Errorf("directory, not file")
 	}
 
 	if fi.Size() == 0 {
-		log.Println("'filename' is empty:", filename)
+		logger.Error("Filetransfer", "'filename' is empty:", filename)
 		return fmt.Errorf("empty file")
 	}
 
 	target := fmt.Sprintf("%s:%d", proxy.EndpointIP, proxy.FilePort)
 	c, err := net.Dial("udp", target)
 	if err != nil {
-		log.Printf("Failed to dial %s", target)
+		logger.Error("Filetransfer", "Failed to dial %s", target)
 		return err
 	}
 
@@ -124,7 +124,7 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Printf("Failed to open %s", filename)
+		logger.Error("Filetransfer", "Failed to open %s", filename)
 		return err
 	}
 
@@ -142,14 +142,12 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 		n, err = file.Read(content[8:])
 		binary.LittleEndian.PutUint32(content, counter)
 		binary.LittleEndian.PutUint32(content[4:], uint32(n))
-		// sn, _ := c.Write(content[:n+8])
 		sn, _ := c.Write(content) // Always write full buffer
 		total += sn
 		counter++
 
 		if counter%1000 == 0 {
 			percent := float64(total) / float64(info.Size) * 100.0
-			// log.Printf("Progress %.2f (%d / %d)", percent, total, info.Size)
 			progress := &types.FileProgress{File: info, TotalSent: total, PercentDone: percent}
 			logger.NotifySubscribers("filetransfer.progress", progress)
 		}
@@ -173,11 +171,9 @@ func sendFile(ctx *context, info *types.FileInfo) error {
 
 	movename := path.Join(todir, name)
 	if err = os.Rename(filename, movename); err == nil {
-		// log.Printf("Done processing file: %s (%s)", filename, movename)
 		logger.Trace("File transfer complete", "File %s, size %d transferred as requested by operator", filename, info.Size)
 	} else {
 		logger.Error("Failed to move file", "Error when attempting to move file after file was transferred, file %s, size %d, error %s", filename, info.Size, err.Error())
-		// log.Printf("Failed to move file after processing: %s", err.Error())
 	}
 
 	logger.NotifySubscribers("filetransfer.complete", info)

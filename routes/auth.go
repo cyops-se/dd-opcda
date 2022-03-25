@@ -5,7 +5,6 @@ import (
 	"dd-opcda/logger"
 	"dd-opcda/types"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/form3tech-oss/jwt-go"
@@ -32,7 +31,7 @@ func login(c *fiber.Ctx) error {
 		return c.Status(503).SendString(err.Error())
 	}
 
-	log.Println("username:", data.UserName, "password:", data.Password)
+	// log.Println("username:", data.UserName, "password:", data.Password)
 
 	var user types.User
 	result := db.DB.Model(&types.User{}).Where("user_name = ? AND password = ?", data.UserName, data.Password).Preload("Settings").First(&user)

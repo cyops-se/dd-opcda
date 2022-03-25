@@ -4,7 +4,6 @@ import (
 	"dd-opcda/logger"
 	"dd-opcda/types"
 	"fmt"
-	"log"
 	"net"
 )
 
@@ -50,7 +49,7 @@ func initProxy(proxy *types.DiodeProxy) (err error) {
 		go sendJob(proxy.FileChan, proxy.FileCon)
 	}
 
-	fmt.Printf("PROXY: proxy with ID %d initialized\n", proxy.ID)
+	logger.Trace("Proxy", "Proxy with ID %d initialized", proxy.ID)
 	proxies[proxy.ID] = proxy
 
 	return err
@@ -60,7 +59,7 @@ func sendJob(channel chan []byte, connection net.Conn) {
 	for {
 		data := <-channel
 		if _, err := connection.Write(data); err != nil {
-			log.Printf("PROXY: Failed to send %#v, error: %s\n", data, err.Error())
+			logger.Error("Proxy", "Failed to send %#v, error: %s", data, err.Error())
 		}
 	}
 }
