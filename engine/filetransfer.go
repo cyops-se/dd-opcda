@@ -88,7 +88,6 @@ func processDirectory(ctx *context, dirname string) {
 			processDirectory(ctx, path.Join(dirname, fi.Name()))
 		}
 	}
-
 }
 
 func sendFile(ctx *context, info *types.FileInfo) error {
