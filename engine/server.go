@@ -38,7 +38,19 @@ func Unlock() {
 func InitServers() {
 	defer handlePanic("InitServers")
 
+	// Test if we can connect Graybox.Simulator since we can't browse it
+
 	i := 0
+	if client, err := opc.NewConnection(
+		"Graybox.Simulator.1",                              // ProgId
+		[]string{"localhost"},                              //  OPC servers nodes
+		[]string{"numeric.sin.int64", "numeric.saw.float"}, // slice of OPC tags
+	); err == nil {
+		servers = append(servers, &Server{ProgID: "Graybox.Simulator", ID: i})
+		i++
+		defer client.Close()
+	}
+
 	if ao := opc.NewAutomationObject(); ao != nil {
 		serversfound := ao.GetOPCServers("localhost")
 		logger.Log("trace", "OPC server init", fmt.Sprintf("Found %d server(s) on '%s':\n", len(serversfound), "localhost"))
