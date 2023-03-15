@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/cyops-se/opc"
 	"golang.org/x/sys/windows/svc"
 )
 
@@ -44,7 +45,8 @@ func main() {
 	svcName := "dd-opcda"
 	flag.StringVar(&ctx.Cmd, "cmd", "debug", "Windows service command (try 'usage' for more info)")
 	flag.StringVar(&ctx.Wdir, "workdir", ".", "Sets the working directory for the process")
-	flag.BoolVar(&ctx.Trace, "trace", false, "Prints traces of OCP data to the console")
+	flag.BoolVar(&ctx.Trace, "trace", false, "Prints traces of application engine to the console")
+	flag.BoolVar(&ctx.TraceOpc, "traceopc", false, "Prints traces of OCP operations to the console")
 	flag.BoolVar(&ctx.Version, "v", false, "Prints the commit hash and exits")
 	flag.Parse()
 
@@ -66,6 +68,10 @@ func main() {
 			log.Fatalf("failed to %s %s: %v", ctx.Cmd, svcName, err)
 		}
 		return
+	}
+
+	if ctx.TraceOpc {
+		opc.Debug()
 	}
 
 	inService, err := svc.IsWindowsService()

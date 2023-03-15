@@ -53,7 +53,7 @@ func InitServers() {
 
 	if ao := opc.NewAutomationObject(); ao != nil {
 		serversfound := ao.GetOPCServers("localhost")
-		logger.Log("trace", "OPC server init", fmt.Sprintf("Found %d server(s) on '%s':\n", len(serversfound), "localhost"))
+		logger.Log("trace", "OPC server init", fmt.Sprintf("Found %d server(s) on '%s':\n", len(serversfound)+i, "localhost"))
 		for _, server := range serversfound {
 			logger.Log("trace", "OPC server found", server)
 			servers = append(servers, &Server{ProgID: server, ID: i})
